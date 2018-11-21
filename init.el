@@ -19,9 +19,6 @@
 (setq confirm-kill-processes nil)
 (setq confirm-kill-emacs #'y-or-n-p)
 
-;; Never need to fully type out "yes" or "no"
-(defalias #'yes-or-no-p #'y-or-n-p)
-
 (setq enable-local-variables :safe)
 
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
@@ -30,6 +27,11 @@
 (toggle-scroll-bar -1)
 (tool-bar-mode -1)
 (global-auto-revert-mode +1)
+
+(defun sj-inhibit-electric-pair-mode (_char)
+  (minibufferp))
+
+(setq electric-pair-inhibit-predicate #'sj-inhibit-electric-pair-mode)
 
 (show-paren-mode +1)
 (electric-pair-mode +1)
@@ -41,16 +43,20 @@
 (add-hook 'prog-mode-hook #'display-line-numbers-mode)
 (add-hook 'text-mode-hook #'display-line-numbers-mode)
 
-(define-key global-map (kbd "C-;") #'comment-line)
 (define-key global-map (kbd "C-x ;") #'ignore)
-(define-key global-map (kbd "M-o") #'mode-line-other-buffer)
-(define-key global-map (kbd "C-M-S-g") #'goto-line)
+(define-key global-map (kbd "C-c o") #'mode-line-other-buffer)
+(define-key global-map (kbd "M-z") #'zap-up-to-char)
 
-(defun js-do-grep-ag (arg)
+(defun sj-do-grep-ag (arg)
   "Run helm-grep-ag in the current directory or project root"
   (interactive "P")
   (helm-grep-ag (or (projectile-project-root) (expand-file-name default-directory))
 		arg))
+
+(defun sj-do-grep-ag-file-type ()
+  "Run helm-grep-ag and choose a file type"
+  (interactive)
+  (sj-do-grep-ag 4))
 
 ;; Automatically wrap i-search when reaching the end of the file
 ;; Source: https://stackoverflow.com/questions/285660/automatically-wrapping-i-search
@@ -88,6 +94,14 @@
 
 (require 'general)
 
+(general-unbind :states 'motion ",")
+
+(general-create-definer sj-leader-def
+  :prefix ","
+  :states 'motion)
+
+(sj-leader-def ":" #'eval-expression)
+
 (use-package restart-emacs
   :ensure t)
 
@@ -97,38 +111,24 @@
   (setq comint-prompt-read-only t)
   (setq comint-scroll-show-maximum-output nil))
 
-;; (use-package evil
-;;   :ensure t
-;;   :init
-;;   (setq evil-want-keybinding nil)
-;;   (setq evil-want-C-u-scroll t)
-;;   (setq evil-want-Y-yank-to-eol t)
-;;   (setq evil-cross-lines nil)
-;;   (setq evil-search-module 'evil-search)
-;;   (setq evil-ex-search-case 'sensitive)
-;;   (setq evil-ex-search-vim-style-regexp t)
-;;   :config
-;;   (evil-mode 1)
-;;   (general-def 'motion
-;;     ";" 'evil-ex
-;;     ":" 'evil-repeat-find-char))
-
-
-;; (use-package evil-collection
-;;   :ensure t
-;;   :after evil
-;;   :init
-;;   (setq evil-collection-company-use-tng nil)
-;;   :config
-;;   (evil-collection-init))
+(defun sj-helm-display (buffer &optional _resume)
+  (interactive)
+  (display-buffer-in-side-window (get-buffer buffer)
+                                 '((window-height . 24) (side . bottom) (slot . 0))))
 
 (use-package helm
   :ensure t
   :delight
+  :general
+  (sj-leader-def "," #'helm-M-x)
+  (sj-leader-def "b" #'helm-mini)
+  (general-nmap "s-g" #'sj-do-grep-ag)
+  (general-nmap "s-G" #'sj-do-grep-ag-file-type)
   :bind (("M-x" . #'helm-M-x)
          ("C-x C-f" . #'helm-find-files)
          ("C-x b" . #'helm-mini)
-         ("C-M-S-y" . #'helm-show-kill-ring)
+         ("C-x C-b" . #'helm-buffers-list)
+         ("C-x y" . #'helm-show-kill-ring)
          ("M-i" . #'helm-imenu)
          ("C-h SPC" . #'helm-all-mark-rings)
 	 ("C-h a" . #'helm-apropos)
@@ -141,14 +141,12 @@
   (setq helm-completion-in-region-fuzzy-match t)
   (setq helm-buffer-max-length 50)
   (setq helm-ff-file-name-history-use-recentf t)
+  (setq helm-display-function #'sj-helm-display)
+  (setq helm-grep-ag-command "rg --color=always --smart-case --no-heading --line-number %s %s %s")
   :config
   (require 'helm-config)
   (helm-mode 1)
   (add-to-list 'helm-boring-buffer-regexp-list "^:") ; Hide dired-sidebar buffer
-  ;; (setq ;; helm-display-function 'helm-display-buffer-in-own-frame
-  ;;  helm-display-function 'my-helm-display-child-frame
-  ;;  helm-display-buffer-reuse-frame t
-  ;;  helm-display-buffer-width 80)  
   )
 
 (use-package projectile
@@ -158,19 +156,26 @@
   (setq projectile-enable-caching t)
   :config
   (projectile-mode 1)
-  (define-key global-map (kbd "C-M-S-a") #'js-do-grep-ag))
+  (setq projectile-switch-project-action #'projectile-vc))
 
 (use-package helm-projectile
   :ensure t
-  :bind-keymap ("C-c p" . projectile-command-map)
-  :bind ("C-M-S-p" . #'helm-projectile)
+  :bind (("s-p" . #'helm-projectile)
+         ("s-s" . #'helm-projectile-switch-project))
+  :general
+  (general-nmap "C-p" #'helm-projectile)
+  (general-nmap "C-n" #'ignore)
   :init
-  (autoload 'projectile "helm-projectile-switch-project" t)
   (setq projectile-enable-caching t)
   (setq helm-projectile-truncate-lines t)
-  (setq projectile-switch-project-action #'helm-projectile)
+  (setq helm-projectile-sources-list
+        '(helm-source-projectile-recentf-list helm-source-projectile-files-list))
   :config
   (helm-projectile-on))
+
+(use-package wgrep-helm
+  :ensure t
+  :after helm)
 
 (use-package whole-line-or-region
   :ensure t
@@ -183,51 +188,48 @@
   :init
   (setq mc/always-run-for-all t))
 
-(use-package winum
-  :ensure t
-  :init
-  (setq winum-auto-setup-mode-line nil)
-  :config
-  (winum-mode))
+;; (use-package winum
+;;   :ensure t
+;;   :init
+;;   (setq winum-auto-setup-mode-line nil)
+;;   :config
+;;   (winum-mode))
 
 (use-package powerline
   :ensure t)
 
 (use-package spaceline
   :ensure t
-  :after (helm)
+  :after (helm evil)
+  :init
+  (setq spaceline-highlight-face-func #'spaceline-highlight-face-evil-state)
   :config
   (spaceline-spacemacs-theme)
   (spaceline-helm-mode))
-
-(general-create-definer sj-leader-def
-  :prefix ","
-  :states 'motion)
-
-(general-unbind 'operator ",")
 
 (use-package avy
   :ensure t
   :bind (("C-'" . #'avy-goto-char-2)
          ("M-g w" . #'avy-goto-word-1)
          ("M-g f" . #'avy-goto-line))
-  ;; :general
-  ;; (sj-leader-def "s" #'avy-goto-char-2 :keymaps 'override)
+  :general
+  (sj-leader-def "s" #'avy-goto-char-2 :keymaps 'override)
   )
 
 (use-package helm-swoop
   :ensure t
-  :bind ("C-M-S-s" . #'helm-swoop)
-  :init
-  (setq helm-swoop-pre-input-function
-	(lambda () "")))
+  :general
+  (general-nmap "s-o" #'helm-swoop-without-pre-input)
+  :config
+  (setq helm-swoop-split-window-function #'sj-helm-display)
+  )
 
 (use-package undo-tree
   :ensure t
   :delight
   :config
   (global-undo-tree-mode 1)
-  :bind (("C-M-S-r" . #'undo-tree-redo)))
+  )
 
 (use-package solarized-theme
   :ensure t
@@ -238,11 +240,10 @@
   :ensure t
   :defer nil
   :delight
-  :bind (("M-/" . #'company-complete))
+  :general
+  (general-imap "C-/" #'company-complete-common)
   :init
-  (setq company-minimum-prefix-length 1)
   (setq company-tooltip-align-annotations t)
-  (setq company-idle-delay 0.2)
   :config
   (global-company-mode 1))
 
@@ -251,10 +252,10 @@
   :config
   (add-hook 'after-init-hook #'global-flycheck-mode))
 
-(defun js-colorize-compilation-buffer ()
+(defun sj-colorize-compilation-buffer ()
   (ansi-color-apply-on-region compilation-filter-start (point-max)))
 
-(defun js-colorize-buffer (proc &rest args)
+(defun sj-colorize-buffer (proc &rest args)
   (interactive)
   (with-current-buffer (process-buffer proc)
     (read-only-mode -1)
@@ -264,14 +265,19 @@
 (use-package ansi-color
   :ensure t
   :config
-  (add-hook 'compilation-filter-hook #'js-colorize-compilation-buffer)
+  (add-hook 'compilation-filter-hook #'sj-colorize-compilation-buffer)
   ;; https://github.com/magit/magit/issues/1878
-  (advice-add 'magit-process-filter :after #'js-colorize-buffer))
+  (advice-add 'magit-process-filter :after #'sj-colorize-buffer))
 
 (use-package js
   :demand t
   :config
   (setq js-indent-level 2))
+
+(use-package css-mode
+  :demand t
+  :config
+  (setq css-indent-offset 2))
 
 (use-package typescript-mode
   :ensure t
@@ -279,16 +285,19 @@
   :init
   (setq typescript-indent-level 2))
 
-  (use-package prettier-js
-    :ensure t
-    :config
-    (add-hook 'typescript-mode-hook #'prettier-js-mode)
-    (add-hook 'js-jsx-mode-hook #'prettier-js-mode)
-    (add-hook 'js-mode-hook #'prettier-js-mode)
-    (add-hook 'web-mode-hook #'prettier-js-mode))
+(use-package prettier-js
+  :ensure t
+  :config
+  (add-hook 'typescript-mode-hook #'prettier-js-mode)
+  (add-hook 'js-jsx-mode-hook #'prettier-js-mode)
+  (add-hook 'js-mode-hook #'prettier-js-mode)
+  (add-hook 'web-mode-hook #'prettier-js-mode))
+
+(defvar tsx-extra-pairs '((?' . ?')))
 
 (use-package web-mode
   :ensure t
+  :after (add-node-modules-path)
   :init
   (setq web-mode-enable-auto-quoting nil)
   (setq web-mode-enable-auto-indentation t)
@@ -298,7 +307,14 @@
   (setq web-mode-markup-indent-offset 2)
   (setq web-mode-jsx-depth-faces nil)   ; Disable JSX highlighting
   :config
-  (add-to-list 'auto-mode-alist '("\\.tsx\\'" . web-mode)))
+;  (sp-local-pair 'web-mode "'" "'")
+  (add-to-list 'auto-mode-alist '("\\.tsx\\'" . web-mode))
+  (add-hook 'web-mode-hook
+	    #'(lambda ()
+                (when (string-equal "tsx" (file-name-extension buffer-file-name))
+                  (add-node-modules-path)
+		  (setq-local electric-pair-pairs (append electric-pair-pairs tsx-extra-pairs))
+		  (setq-local electric-pair-text-pairs electric-pair-pairs)))))
 
 (defun setup-tide-mode ()
   (interactive)
@@ -319,6 +335,8 @@
 (use-package tide
   :ensure t
   :after typescript-mode
+  :init
+  (setq tide-tsserver-executable "/usr/local/bin/tsserver")
   :config
   (add-hook 'typescript-mode-hook #'setup-tide-mode)
   (add-hook 'web-mode-hook
@@ -336,12 +354,15 @@
 
 (use-package dired-sidebar
   :ensure t
+  :after evil
   :bind
-  (("C-M-S-b" . #'dired-sidebar-toggle-sidebar)
+  (("C-c b" . #'dired-sidebar-toggle-sidebar)
    :map dired-sidebar-mode-map
    ([remap keyboard-quit] . #'dired-sidebar-hide-sidebar))
   :config
-  (advice-add 'dired-sidebar-find-file :after #'dired-sidebar-hide-sidebar))
+  (advice-add #'dired-sidebar-find-file :after #'dired-sidebar-hide-sidebar)
+  :init
+  (setq dired-sidebar-icon-scale 0.9))
 
 (use-package add-node-modules-path
   :ensure t
@@ -359,9 +380,9 @@
 
 (use-package feature-mode
   :ensure t
-  :pin melpa
   :config
-  (add-to-list 'auto-mode-alist '("\.feature$" . feature-mode)))
+  (add-to-list 'auto-mode-alist '("\.feature$" . feature-mode))
+  (add-hook 'feature-mode-hook #'display-line-numbers-mode))
 
 (use-package powershell
   :ensure t
@@ -392,31 +413,136 @@
   :ensure t
   :bind
   (("C-x g" . #'magit-status)
-   ("C-x M-g" . #'magit-dispatch-popup)))
+   ("C-x M-g" . #'magit-dispatch-popup))
+  :general
+  (sj-leader-def "g g" #'magit-status)
+  (sj-leader-def "g f" #'magit-file-popup)
+  (sj-leader-def "g x" #'magit-dispatch-popup)
+  :init
+  (setq magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1))
 
 (use-package gitignore-mode
   :ensure t
   :config
   (add-hook #'gitignore-mode-hook #'display-line-numbers-mode))
 
-;; (use-package evil-magit
+;; (use-package lsp-mode
 ;;   :ensure t)
 
-;; (use-package evil-snipe
+;; (use-package company-lsp
+;;   :after lsp-mode
 ;;   :ensure t
-;;   :after evil
-;;   :delight (evil-snipe-local)
-;;   :init
-;;   (setq evil-snipe-scope 'line)
-;;   (setq evil-snipe-spillover-scope 'line)
-;;   (setq evil-snipe-repeat-scope 'line)
-;;   (setq evil-snipe-use-vim-sneak-bindings t)
-;;   (setq evil-snipe-override-evil-repeat-keys nil)
 ;;   :config
-;;   (evil-snipe-mode +1)
-;;   (evil-snipe-override-mode +1)
-;;   (add-hook 'magit-mode-hook #'turn-off-evil-snipe-override-mode)
-;;   (general-def 'motion ":" #'evil-snipe-repeat))
+;;   (push 'company-lsp company-backends))
+
+;; (use-package lsp-javascript-typescript
+;;   :after lsp-mode
+;;   :ensure t
+;;   :config
+;;   (add-hook 'ts-mode-hook #'lsp-javascript-typescript-enable))
+
+;; (use-package smartparens
+;;   :ensure t)
+
+;; (use-package smartparens-config
+;;   :ensure smartparens
+;;   :config
+;;   (smartparens-global-mode)
+;;   (sp-use-smartparens-bindings))
+
+(defun sj-fix-underscore-word-syntax ()
+  (interactive)
+  (modify-syntax-entry ?_ "w"))
+
+(defun sj-fix-elisp-word-syntax ()
+  (interactive)
+  (modify-syntax-entry ?- "w")
+  (modify-syntax-entry ?/ "w")
+  (modify-syntax-entry ?* "w")
+  )
+
+(use-package evil
+  :ensure t
+  :init
+  (setq evil-want-keybinding nil)
+  (setq evil-want-C-u-scroll t)
+  (setq evil-cross-lines nil)
+  (setq evil-search-module 'evil-search)
+  (setq evil-ex-search-case 'sensitive)
+  (setq evil-ex-search-vim-style-regexp t)
+  (setq evil-normal-state-tag "Nrm")
+  (setq evil-insert-state-tag "Ins")
+  (setq evil-motion-state-tag "Mot")
+  (setq evil-operator-state-tag "Pnd")
+  (setq evil-visual-state-tag "Vis")
+  (setq evil-emacs-state-tag "Emc")
+  :config
+  (evil-mode 1)
+  (add-hook 'prog-mode-hook #'sj-fix-underscore-word-syntax)
+  (add-hook 'emacs-lisp-mode-hook #'sj-fix-elisp-word-syntax)
+
+  (general-evil-setup)
+  (general-define-key :keymaps 'minibuffer-local-map "<escape>" 'minibuffer-keyboard-quit)
+
+  (evil-define-text-object evil-defun (count &optional beg end type)
+    "Select around defun."
+    (save-excursion
+      (mark-defun)
+      (evil-range (region-beginning) (region-end) type :expanded t)
+      ))
+  (define-key evil-outer-text-objects-map "f" 'evil-defun)
+  (define-key evil-inner-text-objects-map "f" 'evil-defun)
+  )
+
+  (use-package evil-collection
+    :ensure t
+    :after evil
+    :init
+    (setq evil-collection-term-sync-state-and-mode-p nil)
+    (setq evil-collection-company-use-tng nil)
+    :config
+    (evil-collection-init))
+
+(use-package evil-magit
+  :ensure t)
+
+(use-package evil-snipe
+  :ensure t
+  :after evil
+  :delight evil-snipe-local-mode
+  :init
+  (setq evil-snipe-scope 'buffer)
+  (setq evil-snipe-spillover-scope 'buffer)
+  (setq evil-snipe-repeat-scope 'buffer)
+  (setq evil-snipe-use-vim-sneak-bindings t)
+  :config
+  (evil-snipe-mode +1)
+  (add-hook 'magit-mode-hook #'turn-off-evil-snipe-override-mode))
+
+(use-package evil-commentary
+  :ensure t
+  :delight
+  :config
+  (evil-commentary-mode +1))
+
+(use-package evil-surround
+  :ensure t
+  :config
+  (global-evil-surround-mode 1))
+
+(use-package org
+  :demand t
+  :general
+  (sj-leader-def "l" #'org-store-link))
+
+(use-package evil-org
+  :ensure t
+  :after org
+  :config
+  (add-hook 'org-mode-hook #'evil-org-mode)
+  (evil-org-set-key-theme '(return))
+  :general
+  (general-nmap :keymaps 'evil-org-mode-map "gx" #'org-open-at-point))
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
@@ -429,6 +555,9 @@
  '(custom-safe-themes
    (quote
     ("8aebf25556399b58091e533e455dd50a6a9cba958cc4ebb0aab175863c25b9a4" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" default)))
+ '(package-selected-packages
+   (quote
+    (evil-org helm-swoop lsp-javascript-typescript company-lsp lsp-mode evil-surround smartparens evil-commentary wgrep-helm winum whole-line-or-region web-mode vscode-icon use-package tide spaceline solarized-theme restart-emacs purescript-mode psc-ide prettier-js powershell multiple-cursors helm-projectile gitignore-mode general feature-mode exec-path-from-shell evil-snipe evil-magit evil-collection dired-sidebar delight avy aggressive-indent add-node-modules-path)))
  '(selected-packages
    (quote
     (general evil-snipe evil-magit evil-collection evil web-mode winum whole-line-or-region vscode-icon use-package undo-tree tide spaceline solarized-theme restart-emacs purescript-mode psc-ide prettier-js powershell multiple-cursors magit helm-swoop helm-projectile feature-mode exec-path-from-shell dired-sidebar delight avy aggressive-indent add-node-modules-path))))
