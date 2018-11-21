@@ -158,10 +158,17 @@
   (projectile-mode 1)
   (setq projectile-switch-project-action #'projectile-vc))
 
+(defun sj-refresh-projectile-list ()
+  (interactive)
+  (projectile-invalidate-cache nil)
+  (helm-refresh))
+
 (use-package helm-projectile
   :ensure t
-  :bind (("s-p" . #'helm-projectile)
-         ("s-s" . #'helm-projectile-switch-project))
+  :bind (("s-p" . #'helm-projectile-find-file)
+         ("s-s" . #'helm-projectile-switch-project)
+         :map helm-projectile-find-file-map
+         ("C-r" . #'sj-refresh-projectile-list))
   :general
   (general-nmap "C-p" #'helm-projectile)
   (general-nmap "C-n" #'ignore)
