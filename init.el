@@ -169,14 +169,9 @@
          ("s-s" . #'helm-projectile-switch-project)
          :map helm-projectile-find-file-map
          ("C-r" . #'sj-refresh-projectile-list))
-  :general
-  (general-nmap "C-p" #'helm-projectile)
-  (general-nmap "C-n" #'ignore)
   :init
   (setq projectile-enable-caching t)
   (setq helm-projectile-truncate-lines t)
-  (setq helm-projectile-sources-list
-        '(helm-source-projectile-recentf-list helm-source-projectile-files-list))
   :config
   (helm-projectile-on))
 
@@ -225,8 +220,8 @@
 
 (use-package helm-swoop
   :ensure t
-  :general
-  (general-nmap "s-o" #'helm-swoop-without-pre-input)
+  :bind
+  ("s-o" . #'helm-swoop-without-pre-input)
   :config
   (setq helm-swoop-split-window-function #'sj-helm-display)
   )
@@ -362,12 +357,11 @@
 (use-package dired-sidebar
   :ensure t
   :after evil
-  :bind
-  (("C-c b" . #'dired-sidebar-toggle-sidebar)
-   :map dired-sidebar-mode-map
-   ([remap keyboard-quit] . #'dired-sidebar-hide-sidebar))
   :config
   (advice-add #'dired-sidebar-find-file :after #'dired-sidebar-hide-sidebar)
+  :general
+  (general-nmap :keymaps 'dired-sidebar-mode-map "<escape>" #'dired-sidebar-toggle-sidebar)
+  (general-nmap "s-b" #'dired-sidebar-toggle-sidebar)
   :init
   (setq dired-sidebar-icon-scale 0.9))
 
@@ -433,30 +427,6 @@
   :config
   (add-hook #'gitignore-mode-hook #'display-line-numbers-mode))
 
-;; (use-package lsp-mode
-;;   :ensure t)
-
-;; (use-package company-lsp
-;;   :after lsp-mode
-;;   :ensure t
-;;   :config
-;;   (push 'company-lsp company-backends))
-
-;; (use-package lsp-javascript-typescript
-;;   :after lsp-mode
-;;   :ensure t
-;;   :config
-;;   (add-hook 'ts-mode-hook #'lsp-javascript-typescript-enable))
-
-;; (use-package smartparens
-;;   :ensure t)
-
-;; (use-package smartparens-config
-;;   :ensure smartparens
-;;   :config
-;;   (smartparens-global-mode)
-;;   (sp-use-smartparens-bindings))
-
 (defun sj-fix-underscore-word-syntax ()
   (interactive)
   (modify-syntax-entry ?_ "w"))
@@ -483,13 +453,18 @@
   (setq evil-operator-state-tag "Pnd")
   (setq evil-visual-state-tag "Vis")
   (setq evil-emacs-state-tag "Emc")
+  :general 
+  (general-nmap "C-;" #'evil-paste-pop)
+  (general-nmap "C-n" #'ignore)
+  (general-nmap "C-p" #'ignore)
+  (sj-leader-def "w" 'evil-window-map)
+  ('minibuffer-local-map "<escape>" 'minibuffer-keyboard-quit)
   :config
   (evil-mode 1)
   (add-hook 'prog-mode-hook #'sj-fix-underscore-word-syntax)
   (add-hook 'emacs-lisp-mode-hook #'sj-fix-elisp-word-syntax)
 
   (general-evil-setup)
-  (general-define-key :keymaps 'minibuffer-local-map "<escape>" 'minibuffer-keyboard-quit)
 
   (evil-define-text-object evil-defun (count &optional beg end type)
     "Select around defun."
@@ -497,8 +472,7 @@
       (mark-defun)
       (evil-range (region-beginning) (region-end) type :expanded t)
       ))
-  (define-key evil-outer-text-objects-map "f" 'evil-defun)
-  (define-key evil-inner-text-objects-map "f" 'evil-defun)
+  (define-key evil-outer-text-objects-map "f" #'evil-defun)
   )
 
   (use-package evil-collection
@@ -551,6 +525,29 @@
   :general
   (general-nmap :keymaps 'evil-org-mode-map "gx" #'org-open-at-point))
 
+(use-package diff-hl
+  :ensure t
+  :config
+  (global-diff-hl-mode)
+  (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh)
+  (add-hook 'dired-mode-hook #'diff-hl-dired-mode-unless-remote)
+  :general
+  (sj-leader-def "v" diff-hl-command-map)
+  )
+
+(use-package json-mode
+  :ensure t)
+
+(use-package evil-indent-plus
+  :ensure t
+  :config
+  (evil-indent-plus-default-bindings))
+
+(use-package evil-matchit
+  :ensure t
+  :config
+  (global-evil-matchit-mode +1))
+
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -564,7 +561,7 @@
     ("8aebf25556399b58091e533e455dd50a6a9cba958cc4ebb0aab175863c25b9a4" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" default)))
  '(package-selected-packages
    (quote
-    (evil-org helm-swoop lsp-javascript-typescript company-lsp lsp-mode evil-surround smartparens evil-commentary wgrep-helm winum whole-line-or-region web-mode vscode-icon use-package tide spaceline solarized-theme restart-emacs purescript-mode psc-ide prettier-js powershell multiple-cursors helm-projectile gitignore-mode general feature-mode exec-path-from-shell evil-snipe evil-magit evil-collection dired-sidebar delight avy aggressive-indent add-node-modules-path)))
+    (evil-matchit evil-indent-plus json-mode diff-hl evil-org helm-swoop lsp-javascript-typescript company-lsp lsp-mode evil-surround smartparens evil-commentary wgrep-helm winum whole-line-or-region web-mode vscode-icon use-package tide spaceline solarized-theme restart-emacs purescript-mode psc-ide prettier-js powershell multiple-cursors helm-projectile gitignore-mode general feature-mode exec-path-from-shell evil-snipe evil-magit evil-collection dired-sidebar delight avy aggressive-indent add-node-modules-path)))
  '(selected-packages
    (quote
     (general evil-snipe evil-magit evil-collection evil web-mode winum whole-line-or-region vscode-icon use-package undo-tree tide spaceline solarized-theme restart-emacs purescript-mode psc-ide prettier-js powershell multiple-cursors magit helm-swoop helm-projectile feature-mode exec-path-from-shell dired-sidebar delight avy aggressive-indent add-node-modules-path))))
