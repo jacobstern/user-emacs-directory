@@ -1,0 +1,3 @@
+[submodule "eyebrowse"]
+	path = elisp/fork/eyebrowse
+	url = https://github.com/jacobstern/eyebrowse

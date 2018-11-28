@@ -28,6 +28,9 @@
 (tool-bar-mode -1)
 (global-auto-revert-mode +1)
 
+(let ((default-directory "~/.emacs.d/elisp/"))
+  (normal-top-level-add-subdirs-to-load-path))
+
 (defun sj-inhibit-electric-pair-mode (_char)
   (minibufferp))
 
@@ -100,16 +103,7 @@
   (sj-leader-def "x i" #'helm-imenu)
   ('helm-map "TAB" #'helm-execute-persistent-action)
   ('helm-map "C-/" #'helm-select-action)
-  :bind (("M-x" . #'helm-M-x)
-         ("C-x C-f" . #'helm-find-files)
-         ("C-x b" . #'helm-mini)
-         ("C-x C-b" . #'helm-buffers-list)
-         ("C-x y" . #'helm-show-kill-ring)
-         ("M-i" . #'helm-imenu)
-         ("C-h SPC" . #'helm-all-mark-rings)
-	 ("C-h a" . #'helm-apropos)
-         :map helm-map
-         ("<escape>" . #'helm-keyboard-quit))
+  ('helm-map "<escape>" #'helm-keyboard-quit)
   :init
   (setq helm-M-x-fuzzy-match t)
   (setq helm-buffers-fuzzy-matching t)
@@ -183,7 +177,9 @@
   (setq spaceline-highlight-face-func #'spaceline-highlight-face-evil-state)
   :config
   (spaceline-spacemacs-theme)
-  (spaceline-helm-mode))
+  (spaceline-helm-mode)
+  (spaceline-toggle-workspace-number-off)
+  )
 
 (use-package avy
   :ensure t
@@ -523,17 +519,28 @@
   )
 
 (use-package json-mode
-  :ensure t)
+  :ensure t
+  )
 
 (use-package evil-indent-plus
   :ensure t
   :config
-  (evil-indent-plus-default-bindings))
+  (evil-indent-plus-default-bindings)
+  )
 
 (use-package evil-matchit
   :ensure t
   :config
-  (global-evil-matchit-mode +1))
+  (global-evil-matchit-mode +1)
+  )
+
+(use-package eyebrowse
+  :demand t
+  :config
+  (eyebrowse-mode +1)
+  :custom
+  (eyebrowse-new-workspace t)
+  )
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
