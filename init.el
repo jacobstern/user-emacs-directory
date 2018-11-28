@@ -47,45 +47,15 @@
 (define-key global-map (kbd "C-c o") #'mode-line-other-buffer)
 (define-key global-map (kbd "M-z") #'zap-up-to-char)
 
-(defun sj-do-grep-ag (arg)
-  "Run helm-grep-ag in the current directory or project root"
+(defun sj-projectile-grep-ag (arg)
+  "Run helm-grep-ag in the project root"
   (interactive "P")
-  (helm-grep-ag (or (projectile-project-root) (expand-file-name default-directory))
-		arg))
+  (helm-grep-ag (projectile-project-root) arg))
 
-(defun sj-do-grep-ag-file-type ()
+(defun sj-projectile-grep-ag-file-type ()
   "Run helm-grep-ag and choose a file type"
   (interactive)
-  (sj-do-grep-ag 4))
-
-;; Automatically wrap i-search when reaching the end of the file
-;; Source: https://stackoverflow.com/questions/285660/automatically-wrapping-i-search
-(define-key isearch-mode-map [remap isearch-delete-char] 'isearch-del-char)
-
-(defadvice isearch-search (after isearch-no-fail activate)
-  (unless isearch-success
-    (ad-disable-advice #'isearch-search 'after 'isearch-no-fail)
-    (ad-activate #'isearch-search)
-    (isearch-repeat (when isearch-forward 'forward))
-    (ad-enable-advice #'isearch-search 'after 'isearch-no-fail)
-    (ad-activate #'isearch-search)))
-
-(defun query-replace-entire-buffer (wrapped &rest args)
-  "Query replace the whole buffer or region."
-  (unless (nth 3 args)
-    (setf (nth 3 args)
-          (if (use-region-p)
-              (region-beginning)
-            (point-min))))
-  (unless (nth 4 args)
-    (setf (nth 4 args)
-          (if (use-region-p)
-              (region-end)
-            (point-max))))
-  (apply wrapped args))
-
-(advice-add 'query-replace :around #'query-replace-entire-buffer)
-(advice-add 'query-replace-regexp :around #'query-replace-entire-buffer)
+  (sj-projectile-grep-ag t))
 
 (eval-when-compile
   (require 'use-package))
@@ -98,9 +68,12 @@
 
 (general-create-definer sj-leader-def
   :prefix ","
-  :states 'motion)
+  :non-normal-prefix "C-,"
+  :states '(normal insert))
 
-(sj-leader-def ":" #'eval-expression)
+(sj-leader-def "e e" #'eval-expression)
+(sj-leader-def "e d" #'eval-defun)
+(sj-leader-def "e b" #'eval-buffer)
 
 (use-package restart-emacs
   :ensure t)
@@ -120,10 +93,13 @@
   :ensure t
   :delight
   :general
-  (sj-leader-def "," #'helm-M-x)
-  (sj-leader-def "b" #'helm-mini)
-  (general-nmap "s-g" #'sj-do-grep-ag)
-  (general-nmap "s-G" #'sj-do-grep-ag-file-type)
+  (sj-leader-def "x x" #'helm-M-x)
+  (sj-leader-def "x b" #'helm-buffers-list)
+  (sj-leader-def "x f" #'helm-find-files)
+  (sj-leader-def "x r" #'helm-recentf)
+  (sj-leader-def "x i" #'helm-imenu)
+  ('helm-map "TAB" #'helm-execute-persistent-action)
+  ('helm-map "C-/" #'helm-select-action)
   :bind (("M-x" . #'helm-M-x)
          ("C-x C-f" . #'helm-find-files)
          ("C-x b" . #'helm-mini)
@@ -143,6 +119,8 @@
   (setq helm-ff-file-name-history-use-recentf t)
   (setq helm-display-function #'sj-helm-display)
   (setq helm-grep-ag-command "rg --color=always --smart-case --no-heading --line-number %s %s %s")
+  :custom
+  (helm-mode-handle-completion-in-region nil)
   :config
   (require 'helm-config)
   (helm-mode 1)
@@ -152,11 +130,11 @@
 (use-package projectile
   :ensure t
   :delight '(:eval (concat "Proj[" (projectile-project-name) "]"))
-  :init
   (setq projectile-enable-caching t)
   :config
   (projectile-mode 1)
-  (setq projectile-switch-project-action #'projectile-vc))
+  (setq projectile-switch-project-action #'projectile-vc)
+  )
 
 (defun sj-refresh-projectile-list ()
   (interactive)
@@ -165,6 +143,11 @@
 
 (use-package helm-projectile
   :ensure t
+  :general
+  (sj-leader-def "j g" #'sj-projectile-grep-ag)
+  (sj-leader-def "j G" #'sj-projectile-grep-ag-file-type)
+  (sj-leader-def "j j" #'helm-projectile-find-file)
+  (sj-leader-def "j s" #'helm-projectile-switch-project)
   :bind (("s-p" . #'helm-projectile-find-file)
          ("s-s" . #'helm-projectile-switch-project)
          :map helm-projectile-find-file-map
@@ -204,13 +187,9 @@
 
 (use-package avy
   :ensure t
-  :bind (("C-'" . #'avy-goto-char-2)
-         ("M-g w" . #'avy-goto-word-1)
-         ("M-g f" . #'avy-goto-line))
   :general
-  (sj-leader-def "s s" #'avy-goto-char-2 :keymaps 'override)
-  (sj-leader-def "s f" #'avy-goto-word-1 :keymaps 'override)
-  (sj-leader-def "s g" #'avy-goto-line :keymaps 'override)
+  (sj-leader-def "s" #'avy-goto-char-2-below :keymaps 'override)
+  (sj-leader-def "S" #'avy-goto-char-2-above :keymaps 'override)
   )
 
 (use-package helm-swoop
@@ -305,7 +284,6 @@
   (setq web-mode-markup-indent-offset 2)
   (setq web-mode-jsx-depth-faces nil)   ; Disable JSX highlighting
   :config
-;  (sp-local-pair 'web-mode "'" "'")
   (add-to-list 'auto-mode-alist '("\\.tsx\\'" . web-mode))
   (add-hook 'web-mode-hook
 	    #'(lambda ()
@@ -471,7 +449,7 @@
       (mark-defun)
       (evil-range (region-beginning) (region-end) type :expanded t)
       ))
-  (define-key evil-outer-text-objects-map "f" #'evil-defun)
+  (define-key evil-outer-text-objects-map "d" #'evil-defun)
 
   (evil-define-text-object evil-inner-defun (count &optional beg end type)
     "Select inside defun."
@@ -481,7 +459,7 @@
       (end-of-defun)
       (evil-range (region-beginning) (region-end) type :expanded t)
       ))
-  (define-key evil-inner-text-objects-map "f" #'evil-inner-defun)
+  (define-key evil-inner-text-objects-map "d" #'evil-inner-defun)
   )
 
 (use-package evil-collection
