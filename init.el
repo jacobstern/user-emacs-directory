@@ -60,6 +60,11 @@
   (interactive)
   (sj-projectile-grep-ag t))
 
+(defun sj-dired-default-directory ()
+  "Open dired, bypassing choice of directory"
+  (interactive)
+  (dired default-directory))
+
 (eval-when-compile
   (require 'use-package))
 
@@ -71,21 +76,28 @@
 
 (general-create-definer sj-leader-def
   :prefix ","
+  :prefix-command 'sj-leader-prefix
   :non-normal-prefix "C-,"
-  :states '(normal insert))
+  :states '(normal insert)
+  )
 
 (sj-leader-def "e e" #'eval-expression)
 (sj-leader-def "e d" #'eval-defun)
 (sj-leader-def "e b" #'eval-buffer)
+(sj-leader-def "x s" #'save-buffer)
+(sj-leader-def "x S" #'save-some-buffers)
+(sj-leader-def "x d" #'sj-dired-default-directory)
 
 (use-package restart-emacs
-  :ensure t)
+  :ensure t
+  )
 
 (use-package comint
   :demand t
   :init
   (setq comint-prompt-read-only t)
-  (setq comint-scroll-show-maximum-output nil))
+  (setq comint-scroll-show-maximum-output nil)
+  )
 
 (defun sj-helm-display (buffer &optional _resume)
   (interactive)
@@ -101,6 +113,8 @@
   (sj-leader-def "x f" #'helm-find-files)
   (sj-leader-def "x r" #'helm-recentf)
   (sj-leader-def "x i" #'helm-imenu)
+  (sj-leader-def "x z" #'helm-resume)
+  (sj-leader-def "x o" #'helm-occur)
   ('helm-map "TAB" #'helm-execute-persistent-action)
   ('helm-map "C-/" #'helm-select-action)
   ('helm-map "<escape>" #'helm-keyboard-quit)
@@ -112,7 +126,7 @@
   (setq helm-buffer-max-length 50)
   (setq helm-ff-file-name-history-use-recentf t)
   (setq helm-display-function #'sj-helm-display)
-  (setq helm-grep-ag-command "rg --color=always --smart-case --no-heading --line-number %s %s %s")
+  (setq helm-grep-ag-command "rg --color=always --no-heading --line-number %s %s %s")
   :custom
   (helm-mode-handle-completion-in-region nil)
   :config
@@ -125,6 +139,8 @@
   :ensure t
   :delight '(:eval (concat "Proj[" (projectile-project-name) "]"))
   (setq projectile-enable-caching t)
+  :general
+  (sj-leader-def "j d" #'projectile-dired)
   :config
   (projectile-mode 1)
   (setq projectile-switch-project-action #'projectile-vc)
@@ -140,15 +156,16 @@
   :general
   (sj-leader-def "j g" #'sj-projectile-grep-ag)
   (sj-leader-def "j G" #'sj-projectile-grep-ag-file-type)
-  (sj-leader-def "j j" #'helm-projectile-find-file)
+  (sj-leader-def "j j" #'helm-projectile)
+  (sj-leader-def "j f" #'helm-projectile-find-file)
+  (sj-leader-def "j b" #'helm-projectile-switch-to-buffer)
   (sj-leader-def "j s" #'helm-projectile-switch-project)
-  :bind (("s-p" . #'helm-projectile-find-file)
-         ("s-s" . #'helm-projectile-switch-project)
-         :map helm-projectile-find-file-map
-         ("C-r" . #'sj-refresh-projectile-list))
-  :init
-  (setq projectile-enable-caching t)
-  (setq helm-projectile-truncate-lines t)
+  (helm-projectile-find-file-map "C-r" #'sj-refresh-projectile-list)
+  :custom
+  (projectile-enable-caching t)
+  (helm-projectile-truncate-lines t)
+  (helm-projectile-sources-list
+   '(helm-source-projectile-recentf-list helm-source-projectile-files-list))
   :config
   (helm-projectile-on))
 
@@ -468,36 +485,42 @@
   (evil-collection-init))
 
 (use-package evil-magit
-  :ensure t)
+  :ensure t
+  )
 
 (use-package evil-snipe
   :ensure t
-  :after evil
+  :after (evil)
   :delight evil-snipe-local-mode
-  :init
-  (setq evil-snipe-scope 'buffer)
-  (setq evil-snipe-spillover-scope 'buffer)
-  (setq evil-snipe-repeat-scope 'buffer)
-  (setq evil-snipe-use-vim-sneak-bindings t)
+  :general
+  ('evil-snipe-parent-transient-map "," #'sj-leader-prefix)
+  :custom
+  (evil-snipe-scope 'buffer)
+  (evil-snipe-spillover-scope 'buffer)
+  (evil-snipe-repeat-scope 'buffer)
   :config
   (evil-snipe-mode +1)
-  (add-hook 'magit-mode-hook #'turn-off-evil-snipe-override-mode))
+  (add-hook 'magit-mode-hook #'turn-off-evil-snipe-override-mode)
+  )
 
 (use-package evil-commentary
   :ensure t
   :delight
   :config
-  (evil-commentary-mode +1))
+  (evil-commentary-mode +1)
+  )
 
 (use-package evil-surround
   :ensure t
   :config
-  (global-evil-surround-mode 1))
+  (global-evil-surround-mode 1)
+  )
 
 (use-package org
   :demand t
   :general
-  (sj-leader-def "l" #'org-store-link))
+  (sj-leader-def "l" #'org-store-link)
+  )
 
 (use-package evil-org
   :ensure t
@@ -506,7 +529,8 @@
   (add-hook 'org-mode-hook #'evil-org-mode)
   (evil-org-set-key-theme '(return))
   :general
-  (general-nmap :keymaps 'evil-org-mode-map "gx" #'org-open-at-point))
+  (general-nmap :keymaps 'evil-org-mode-map "gx" #'org-open-at-point)
+  )
 
 (use-package diff-hl
   :ensure t
@@ -558,7 +582,12 @@
  '(custom-safe-themes
    (quote
     ("fa2b58bb98b62c3b8cf3b6f02f058ef7827a8e497125de0254f56e373abee088" "8aebf25556399b58091e533e455dd50a6a9cba958cc4ebb0aab175863c25b9a4" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" default)))
+ '(evil-snipe-repeat-scope (quote buffer))
+ '(evil-snipe-scope (quote buffer))
+ '(evil-snipe-spillover-scope (quote buffer))
+ '(eyebrowse-new-workspace t)
  '(fci-rule-color "#eee8d5")
+ '(helm-mode-handle-completion-in-region nil)
  '(highlight-changes-colors (quote ("#d33682" "#6c71c4")))
  '(highlight-symbol-colors
    (--map
