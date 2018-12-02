@@ -93,7 +93,6 @@
   )
 
 (use-package comint
-  :demand t
   :init
   (setq comint-prompt-read-only t)
   (setq comint-scroll-show-maximum-output nil)
@@ -115,9 +114,10 @@
   (sj-leader-def "x i" #'helm-imenu)
   (sj-leader-def "x z" #'helm-resume)
   (sj-leader-def "x o" #'helm-occur)
-  ('helm-map "TAB" #'helm-execute-persistent-action)
-  ('helm-map "C-/" #'helm-select-action)
-  ('helm-map "<escape>" #'helm-keyboard-quit)
+  (helm-map "TAB" #'helm-execute-persistent-action)
+  (helm-map "C-/" #'helm-select-action)
+  (helm-map "<escape>" #'helm-keyboard-quit)
+  (helm-map "C-r" #'helm-refresh)
   :init
   (setq helm-M-x-fuzzy-match t)
   (setq helm-buffers-fuzzy-matching t)
@@ -239,6 +239,8 @@
 
 (use-package flycheck
   :ensure t
+  :general
+  (sj-leader-def "!" flycheck-command-map)
   :config
   (add-hook 'after-init-hook #'global-flycheck-mode))
 
@@ -260,12 +262,10 @@
   (advice-add 'magit-process-filter :after #'sj-colorize-buffer))
 
 (use-package js
-  :demand t
   :config
   (setq js-indent-level 2))
 
 (use-package css-mode
-  :demand t
   :config
   (setq css-indent-offset 2))
 
@@ -517,7 +517,6 @@
   )
 
 (use-package org
-  :demand t
   :general
   (sj-leader-def "l" #'org-store-link)
   )
@@ -558,14 +557,6 @@
   (global-evil-matchit-mode +1)
   )
 
-(use-package eyebrowse
-  :demand t
-  :config
-  (eyebrowse-mode +1)
-  :custom
-  (eyebrowse-new-workspace t)
-  )
-
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -582,12 +573,16 @@
  '(custom-safe-themes
    (quote
     ("fa2b58bb98b62c3b8cf3b6f02f058ef7827a8e497125de0254f56e373abee088" "8aebf25556399b58091e533e455dd50a6a9cba958cc4ebb0aab175863c25b9a4" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" default)))
- '(evil-snipe-repeat-scope (quote buffer))
- '(evil-snipe-scope (quote buffer))
- '(evil-snipe-spillover-scope (quote buffer))
+ '(evil-snipe-repeat-scope (quote buffer) t)
+ '(evil-snipe-scope (quote buffer) t)
+ '(evil-snipe-spillover-scope (quote buffer) t)
  '(eyebrowse-new-workspace t)
  '(fci-rule-color "#eee8d5")
  '(helm-mode-handle-completion-in-region nil)
+ '(helm-projectile-sources-list
+   (quote
+    (helm-source-projectile-recentf-list helm-source-projectile-files-list)))
+ '(helm-projectile-truncate-lines t)
  '(highlight-changes-colors (quote ("#d33682" "#6c71c4")))
  '(highlight-symbol-colors
    (--map
@@ -618,9 +613,10 @@
     ("#dc322f" "#cb4b16" "#b58900" "#546E00" "#B4C342" "#00629D" "#2aa198" "#d33682" "#6c71c4")))
  '(package-selected-packages
    (quote
-    (spacemacs-theme helpful evil-matchit evil-indent-plus json-mode diff-hl evil-org helm-swoop lsp-javascript-typescript company-lsp lsp-mode evil-surround smartparens evil-commentary wgrep-helm winum whole-line-or-region web-mode vscode-icon use-package tide spaceline solarized-theme restart-emacs purescript-mode psc-ide prettier-js powershell multiple-cursors helm-projectile gitignore-mode general feature-mode exec-path-from-shell evil-snipe evil-magit evil-collection dired-sidebar delight avy aggressive-indent add-node-modules-path)))
+    (rainbow-delimiters spacemacs-theme helpful evil-matchit evil-indent-plus json-mode diff-hl evil-org helm-swoop lsp-javascript-typescript company-lsp lsp-mode evil-surround smartparens evil-commentary wgrep-helm winum whole-line-or-region web-mode vscode-icon use-package tide spaceline solarized-theme restart-emacs purescript-mode psc-ide prettier-js powershell multiple-cursors helm-projectile gitignore-mode general feature-mode exec-path-from-shell evil-snipe evil-magit evil-collection dired-sidebar delight avy aggressive-indent add-node-modules-path)))
  '(pos-tip-background-color "#eee8d5")
  '(pos-tip-foreground-color "#586e75")
+ '(projectile-enable-caching t)
  '(selected-packages
    (quote
     (general evil-snipe evil-magit evil-collection evil web-mode winum whole-line-or-region vscode-icon use-package undo-tree tide spaceline solarized-theme restart-emacs purescript-mode psc-ide prettier-js powershell multiple-cursors magit helm-swoop helm-projectile feature-mode exec-path-from-shell dired-sidebar delight avy aggressive-indent add-node-modules-path)))
