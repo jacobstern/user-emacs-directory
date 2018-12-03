@@ -11,16 +11,17 @@
 (defun sj-quickfix--setup ()
   "Initialize `sj-quickfix-mode'.")
 
-(defun sj-quickfix--compare-window-bottom-right (it other)
-  "Comparison function for finding a window at the bottom right.
-Compare IT and OTHER."
+(defun sj-quickfix--bottom-right-window-cmp (it other)
+  "Comparison predicate for finding a window at the bottom right.
+Return t if IT is closer to the bottom right corner of the frame than
+OTHER."
   (-let (((_ _ it-right it-bottom) (window-edges it))
 	 ((_ _ other-right other-bottom) (window-edges other)))
-    (and (> it-right other-right) (> it-bottom other-bottom))))
+    (or (> it-right other-right) (> it-bottom other-bottom))))
 
 (defun sj-quickfix--bottom-right-window ()
   "Return the window at the bottom right corner of the frame."
-  (-max-by #'sj-quickfix--compare-window-bottom-right (window-list)))
+  (-max-by #'sj-quickfix--bottom-right-window-cmp (window-list)))
 
 (defun sj-quickfix--get-or-create-quickfix-window ()
   "Find an existing quickfix window or create a new one."
