@@ -8,7 +8,6 @@
         ("melpa" . "http://melpa.org/packages/")))
 
 (setq x-underline-at-descent-line t)
-(setq ns-use-srgb-colorspace nil)
 
 (setq indent-tabs-mode nil)
 (setq inhibit-splash-screen t)
@@ -185,7 +184,9 @@
   (setq mc/always-run-for-all t))
 
 (use-package powerline
-  :ensure t)
+  :ensure t
+  :init
+  (setq powerline-image-apple-rgb t))
 
 (use-package spaceline
   :ensure t
@@ -195,15 +196,12 @@
   :config
   (spaceline-spacemacs-theme)
   (spaceline-helm-mode)
-  (spaceline-toggle-workspace-number-off)
-  )
+  (spaceline-toggle-workspace-number-off))
 
 (use-package avy
   :ensure t
   :general
-  (sj-leader-def "s" #'avy-goto-char-2-below :keymaps 'override)
-  (sj-leader-def "S" #'avy-goto-char-2-above :keymaps 'override)
-  )
+  (sj-leader-def "s" #'avy-goto-char-2 :keymaps 'override))
 
 (use-package helm-swoop
   :ensure t
@@ -230,8 +228,8 @@
   :defer nil
   :delight
   :general
-  (general-imap "C-/" #'company-complete-common)
-  ('company-active-map "C-c" #'company-abort)
+  (general-imap "C-/" #'company-complete-common :keymaps company-mode-map)
+  (company-active-map "C-c" #'company-abort)
   :init
   (setq company-tooltip-align-annotations t)
   :config
@@ -425,8 +423,14 @@
   (modify-syntax-entry ?* "w")
   )
 
+(defun js-insert-tab ()
+  "Inserts a number of spaces equal to evil-shift-width."
+  (interactive)
+  (insert-char 32 evil-shift-width))
+
 (use-package evil
   :ensure t
+  :demand t
   :init
   (setq evil-want-keybinding nil)
   (setq evil-want-C-u-scroll t)
@@ -447,6 +451,7 @@
   (general-nmap "C-;" #'evil-paste-pop)
   (general-nmap "C-n" #'ignore)
   (general-nmap "C-p" #'ignore)
+  (general-imap :keymaps 'override "TAB" #'js-insert-tab)
   (sj-leader-def "w" 'evil-window-map)
   ('minibuffer-local-map "<escape>" 'minibuffer-keyboard-quit)
   :config
@@ -490,16 +495,14 @@
 
 (use-package evil-snipe
   :ensure t
+  :demand t
   :after (evil)
   :delight evil-snipe-local-mode
   :general
-  ('evil-snipe-parent-transient-map "," #'sj-leader-prefix)
-  :custom
-  (evil-snipe-scope 'buffer)
-  (evil-snipe-spillover-scope 'buffer)
-  (evil-snipe-repeat-scope 'buffer)
+  (evil-snipe-parent-transient-map "," #'sj-leader-prefix)
   :config
   (evil-snipe-mode +1)
+  (evil-snipe-override-mode +1)
   (add-hook 'magit-mode-hook #'turn-off-evil-snipe-override-mode)
   )
 
@@ -557,6 +560,31 @@
   (global-evil-matchit-mode +1)
   )
 
+(use-package smerge-mode
+  :general
+  (sj-leader-def "^ RET" #'smerge-keep-current :keymaps 'smerge-mode-map)
+  (sj-leader-def "^ C" #'smerge-combine-with-next :keymaps 'smerge-mode-map)
+  (sj-leader-def "^ E" #'smerge-ediff :keymaps 'smerge-mode-map)
+  (sj-leader-def "^ R" #'smerge-refine :keymaps 'smerge-mode-map)
+  (sj-leader-def "^ a" #'smerge-keep-all :keymaps 'smerge-mode-map)
+  (sj-leader-def "^ b" #'smerge-keep-base :keymaps 'smerge-mode-map)
+  (sj-leader-def "^ l" #'smerge-keep-lower :keymaps 'smerge-mode-map)
+  (sj-leader-def "^ c" #'smerge-keep-upper :keymaps 'smerge-mode-map)
+  (sj-leader-def "^ n" #'smerge-next :keymaps 'smerge-mode-map)
+  (sj-leader-def "^ p" #'smerge-prev :keymaps 'smerge-mode-map)
+  (sj-leader-def "^ f" #'smerge-resolve :keymaps 'smerge-mode-map))
+
+(use-package dockerfile-mode
+  :ensure t
+  :config
+  (add-to-list 'auto-mode-alist '("Dockerfile\\'" . dockerfile-mode)))
+
+(use-package conf-mode
+  :config
+  ; For .circleci/config.yml
+  (add-hook 'conf-colon-mode-hook #'display-line-numbers-mode)
+  (add-hook 'conf-colon-mode-hook #'sj-fix-underscore-word-syntax))
+
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -573,16 +601,13 @@
  '(custom-safe-themes
    (quote
     ("fa2b58bb98b62c3b8cf3b6f02f058ef7827a8e497125de0254f56e373abee088" "8aebf25556399b58091e533e455dd50a6a9cba958cc4ebb0aab175863c25b9a4" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" default)))
- '(evil-snipe-repeat-scope (quote buffer) t)
- '(evil-snipe-scope (quote buffer) t)
- '(evil-snipe-spillover-scope (quote buffer) t)
  '(eyebrowse-new-workspace t)
  '(fci-rule-color "#eee8d5")
  '(helm-mode-handle-completion-in-region nil)
  '(helm-projectile-sources-list
    (quote
-    (helm-source-projectile-recentf-list helm-source-projectile-files-list)))
- '(helm-projectile-truncate-lines t)
+    (helm-source-projectile-recentf-list helm-source-projectile-files-list)) t)
+ '(helm-projectile-truncate-lines t t)
  '(highlight-changes-colors (quote ("#d33682" "#6c71c4")))
  '(highlight-symbol-colors
    (--map
@@ -613,10 +638,11 @@
     ("#dc322f" "#cb4b16" "#b58900" "#546E00" "#B4C342" "#00629D" "#2aa198" "#d33682" "#6c71c4")))
  '(package-selected-packages
    (quote
-    (rainbow-delimiters spacemacs-theme helpful evil-matchit evil-indent-plus json-mode diff-hl evil-org helm-swoop lsp-javascript-typescript company-lsp lsp-mode evil-surround smartparens evil-commentary wgrep-helm winum whole-line-or-region web-mode vscode-icon use-package tide spaceline solarized-theme restart-emacs purescript-mode psc-ide prettier-js powershell multiple-cursors helm-projectile gitignore-mode general feature-mode exec-path-from-shell evil-snipe evil-magit evil-collection dired-sidebar delight avy aggressive-indent add-node-modules-path)))
+    (dockerfile-mode helm-ag rainbow-delimiters spacemacs-theme helpful evil-matchit evil-indent-plus json-mode diff-hl evil-org helm-swoop lsp-javascript-typescript company-lsp lsp-mode evil-surround smartparens evil-commentary wgrep-helm winum whole-line-or-region web-mode vscode-icon use-package tide spaceline solarized-theme restart-emacs purescript-mode psc-ide prettier-js powershell multiple-cursors helm-projectile gitignore-mode general feature-mode exec-path-from-shell evil-snipe evil-magit evil-collection dired-sidebar delight avy aggressive-indent add-node-modules-path)))
  '(pos-tip-background-color "#eee8d5")
  '(pos-tip-foreground-color "#586e75")
- '(projectile-enable-caching t)
+ '(powerline-image-apple-rgb t)
+ '(projectile-enable-caching t t)
  '(selected-packages
    (quote
     (general evil-snipe evil-magit evil-collection evil web-mode winum whole-line-or-region vscode-icon use-package undo-tree tide spaceline solarized-theme restart-emacs purescript-mode psc-ide prettier-js powershell multiple-cursors magit helm-swoop helm-projectile feature-mode exec-path-from-shell dired-sidebar delight avy aggressive-indent add-node-modules-path)))
@@ -659,6 +685,8 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
+
+(powerline-reset)
 
 ;; Local Variables:
 ;; eval: (flycheck-mode -1)
