@@ -364,6 +364,17 @@
   (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode)
   )
 
+(defun company-mode/backend-with-yas (backend)
+  (if (and (listp backend) (member 'company-yasnippet backend))
+      backend
+    (append (if (consp backend) backend (list backend))
+            '(:with company-yasnippet))))
+
+(defun add-yas-to-completion ()
+  (interactive)
+  (setq company-backends (mapcar #'company-mode/backend-with-yas company-backends))
+  )
+
 (use-package company
   :ensure t
   :after (general)
@@ -372,11 +383,14 @@
   (setq company-tooltip-align-annotations t)
   (setq company-dabbrev-downcase nil)
   (setq company-require-match nil)
+  (setq company-abort-manual-when-too-short t)
   :general
   (general-imap "C-SPC" #'company-complete-common)
+  (general-imap "C-/" #'company-yasnippet)
   (company-active-map "C-c" #'company-abort)
   :config
   (global-company-mode 1)
+  (add-hook 'prog-mode-hook #'add-yas-to-completion)
   )
 
 (use-package undo-tree
@@ -475,6 +489,7 @@
   (sj-leader-def :keymaps 'intero-mode-map "m r" #'intero-apply-suggestions)
   :config
   (add-hook 'haskell-mode-hook #'intero-mode)
+  (add-hook 'intero-mode-hook #'add-yas-to-completion)
   (sj-define-repl-regexp "\\*intero.*?repl\\*")
   )
 
@@ -685,6 +700,20 @@
   :after treemacs projectile
   :ensure t
   )
+
+(use-package yasnippet
+  :ensure t
+  :demand t
+  :general
+  (general-imap "C-s" #'yas-expand)
+  :config
+  (yas-global-mode 1)
+  (add-hook 'evil-insert-state-exit-hook #'yas-exit-all-snippets)
+  )
+
+(use-package yasnippet-snippets
+  :ensure t
+  )
 
 
 (custom-set-variables
@@ -697,7 +726,7 @@
     ("6b2636879127bf6124ce541b1b2824800afc49c6ccd65439d6eb987dbf200c36" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" "fa2b58bb98b62c3b8cf3b6f02f058ef7827a8e497125de0254f56e373abee088" default)))
  '(package-selected-packages
    (quote
-    (forge treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
+    (yasnippet-snippets yasnippet forge treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
