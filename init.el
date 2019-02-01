@@ -122,11 +122,13 @@
   (sj-projectile-grep-ag t))
 
 (defun sj-split-and-select-other (buffer)
-  (select-window (split-window (selected-window) nil 'below))
-  (evil-buffer buffer))
+  (let ((new-window (split-window (selected-window) nil 'below)))
+    (select-window new-window)
+    (evil-buffer buffer)
+    new-window))
 
 (defun sj-shackle-split (buffer _alist _plist)
-  (get-buffer-window (sj-split-and-select-other buffer))
+  (sj-split-and-select-other buffer)
   )
 
 (defun sj-shackle-find-or-split (buffer alist plist)
@@ -160,11 +162,20 @@
 (defun sj-display-buffer-split (buffer _alist)
   (sj-split-and-select-other buffer))
 
+;; (defun sj-display-or-split-magit (buffer)
+;;   (display-buffer
+;;    buffer (cond (magit-display-buffer-noselect nil) ; Other window
+;;                 ((derived-mode-p 'magit-status-mode) '(display-buffer-below-selected))
+;;                 ((with-current-buffer buffer
+;;                    (derived-mode-p 'magit-diff-mode 'magit-process-mode))
+;;                  '(sj-display-buffer-split))
+;;                 (t '(display-buffer-same-window)))))
+
 (defun sj-display-or-split-magit (buffer)
   (display-buffer
    buffer (if (with-current-buffer buffer
                 (derived-mode-p 'magit-diff-mode 'magit-process-mode))
-              '(sj-display-buffer-split)
+              '(display-buffer-below-selected)
             '(display-buffer-same-window))))
 
 (use-package delight
