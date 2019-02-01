@@ -11,3 +11,5 @@ eshell/
 /projectile-bookmarks.eld
 /projectile.cache
 /recentf
+smex-items
+.cache/

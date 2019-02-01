@@ -129,6 +129,16 @@
   (or (get-buffer-window buffer)
       (sj-shackle-split buffer alist plist))
   )
+
+(defun sj-evil-prefix-translations (_mode mode-keymaps &rest _rest)
+  (evil-collection-translate-key 'normal mode-keymaps
+    "q" nil)
+  )
+
+(defun sj-define-repl (regexp)
+  (if (not (boundp 'shackle-rules)) (setq shackle-rules nil))
+  (add-to-list 'shackle-rules `(,regexp :regexp t :custom sj-shackle-find-or-split))
+  )
 
 (use-package delight
   :ensure t)
@@ -182,7 +192,7 @@
 (use-package helm
   :ensure t
   :delight
-  :after (general delight)
+  :after (general delight shackle)
   :general
   (sj-leader-def "x x" #'helm-M-x)
   (sj-leader-def "x b" #'helm-buffers-list)
@@ -205,6 +215,8 @@
   (setq helm-grep-ag-command "rg --color=always --smart-case --no-heading --line-number %s %s %s")
   (setq helm-mode-handle-completion-in-region nil)
   (setq helm-display-function #'pop-to-buffer) ; For Shackle compatibility
+  :config
+  (add-to-list 'shackle-rules '("\\`\\*helm.*?\\*\\'" :regexp t :align t :size 28))
   )
 
 (use-package helm-config
@@ -261,7 +273,7 @@
 (use-package powerline
   :ensure t
   :init
-  (setq powerline-height 24)
+  (setq powerline-height 26)
   (setq powerline-default-separator 'slant))
 
 (use-package spaceline
@@ -269,6 +281,8 @@
   :after (powerline helm evil)
   :init
   (setq spaceline-highlight-face-func #'spaceline-highlight-face-evil-state)
+  :custom-face
+  (spaceline-evil-normal ((t (:background "#66ADE8" :foreground "#3E3D31" :inherit (quote mode-line)))))
   :config
   (spaceline-spacemacs-theme)
   (spaceline-helm-mode))
@@ -408,18 +422,20 @@
 
 (use-package haskell-mode
   :ensure t
-  :config
-  (add-hook 'haskell-mode-hook #'subword-mode))
+  )
 
 (use-package intero
   :ensure t
-  :after (general shackle)
+  :demand t
+  :after (general haskell-mode shackle)
   :general
   (sj-leader-def :keymaps 'intero-mode-map "m l" #'intero-repl-load)
   (sj-leader-def :keymaps 'intero-mode-map "m z" #'intero-repl)
   (sj-leader-def :keymaps 'intero-mode-map "m t" #'intero-type-at)
+  (sj-leader-def :keymaps 'intero-mode-map "m r" #'intero-apply-suggestions)
   :config
   (add-hook 'haskell-mode-hook #'intero-mode)
+  (sj-define-repl "\\*intero.*?repl\\*")
   )
 
 (use-package shackle
@@ -427,15 +443,9 @@
   :pin melpa
   :init
   (setq swiper-helm-display-function #'pop-to-buffer)
-  (setq shackle-rules '(("*Help*" :custom sj-shackle-find-or-split)
-                        ("\\`\\*helm.*?\\*\\'" :regexp t :align t :size 28)
-                        ("*swiper*" :regexp t :align t :size 28)
-                        ("*evil-registers*" :regexp t :align t :size 28)
-                        ("*shell*" :regexp t :custom sj-shackle-find-or-split)
-                        ("*Warnings*" :regexp t :custom sj-shackle-find-or-split)))
-  ;; Why doesn't this work in the intero def?
-  (add-to-list 'shackle-rules '("\\*intero.*?repl\\*" :regexp t :custom sj-shackle-find-or-split))
   :config
+  (add-to-list 'shackle-rules '("*Help*" :custom sj-shackle-find-or-split))
+  (add-to-list 'shackle-rules '("*shell*" :regexp t :custom sj-shackle-find-or-split))
   (shackle-mode 1))
 
 (use-package evil
@@ -487,11 +497,6 @@
   (define-key evil-inner-text-objects-map "d" #'evil-inner-defun)
   )
 
-(defun sj-evil-prefix-translations (_mode mode-keymaps &rest _rest)
-  (evil-collection-translate-key 'normal mode-keymaps
-    "q" nil
-    ))
-
 (use-package evil-collection
   :ensure t
   :after evil
@@ -542,6 +547,70 @@
   :config
   (global-evil-matchit-mode +1)
   )
+
+(use-package treemacs
+  :ensure t
+  :demand t
+  :init
+  :general
+  (general-nmap "\\" #'treemacs-select-window)
+  :config
+  (progn
+    (setq treemacs-collapse-dirs              (if (executable-find "python") 3 0)
+          treemacs-deferred-git-apply-delay   0.5
+          treemacs-display-in-side-window     t
+          treemacs-file-event-delay           5000
+          treemacs-file-follow-delay          0.2
+          treemacs-follow-after-init          t
+          treemacs-follow-recenter-distance   0.1
+          treemacs-git-command-pipe           ""
+          treemacs-goto-tag-strategy          'refetch-index
+          treemacs-indentation                2
+          treemacs-indentation-string         " "
+          treemacs-is-never-other-window      nil
+          treemacs-max-git-entries            5000
+          treemacs-no-png-images              nil
+          treemacs-no-delete-other-windows    t
+          treemacs-project-follow-cleanup     nil
+          treemacs-persist-file               (expand-file-name ".cache/treemacs-persist" user-emacs-directory)
+          treemacs-recenter-after-file-follow t
+          treemacs-recenter-after-tag-follow  t
+          treemacs-show-cursor                nil
+          treemacs-show-hidden-files          t
+          treemacs-silent-filewatch           nil
+          treemacs-silent-refresh             nil
+          treemacs-sorting                    'alphabetic-desc
+          treemacs-space-between-root-nodes   t
+          treemacs-tag-follow-cleanup         t
+          treemacs-tag-follow-delay           1.5
+          treemacs-width                      35)
+
+    ;; The default width and height of the icons is 22 pixels. If you are
+    ;; using a Hi-DPI display, uncomment this to double the icon size.
+
+    ;; (treemacs-resize-icons 44)
+
+    (treemacs-follow-mode t)
+    (treemacs-filewatch-mode t)
+    )
+
+  (add-hook 'treemacs-mode-hook
+	    (lambda ()
+	      (setq cursor-in-non-selected-windows nil)))
+  (if (equal (treemacs-current-visibility) 'none)
+      (save-selected-window
+        (treemacs)))
+  )
+
+(use-package treemacs-evil
+  :after treemacs evil
+  :ensure t
+  )
+
+(use-package treemacs-projectile
+  :after treemacs projectile
+  :ensure t
+  )
 
 
 (custom-set-variables
@@ -554,13 +623,13 @@
     ("6b2636879127bf6124ce541b1b2824800afc49c6ccd65439d6eb987dbf200c36" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" "fa2b58bb98b62c3b8cf3b6f02f058ef7827a8e497125de0254f56e373abee088" default)))
  '(package-selected-packages
    (quote
-    (evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
+    (treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- )
+ '(spaceline-evil-normal ((t (:background "#66ADE8" :foreground "#3E3D31" :inherit (quote mode-line))))))
 
 ;; Local Variables:
 ;; eval: (flycheck-mode -1)
