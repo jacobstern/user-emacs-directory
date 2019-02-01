@@ -121,8 +121,12 @@
   (interactive)
   (sj-projectile-grep-ag t))
 
+(defun sj-split-and-select-other (buffer)
+  (select-window (split-window (selected-window) nil 'below))
+  (evil-buffer buffer))
+
 (defun sj-shackle-split (buffer _alist _plist)
-  (get-buffer-window (evil-split-buffer buffer))
+  (get-buffer-window (sj-split-and-select-other buffer))
   )
 
 (defun sj-shackle-find-or-split (buffer alist plist)
@@ -135,10 +139,33 @@
     "q" nil)
   )
 
-(defun sj-define-repl (regexp)
-  (if (not (boundp 'shackle-rules)) (setq shackle-rules nil))
+(defun sj-define-repl(bufname)
+  (if (not (boundp 'shackle-rules))
+      (setq shackle-rules nil))
+  (add-to-list 'shackle-rules `(,bufname :custom sj-shackle-find-or-split))
+  )
+
+(defun sj-define-repl-regexp (regexp)
+  (if (not (boundp 'shackle-rules))
+      (setq shackle-rules nil))
   (add-to-list 'shackle-rules `(,regexp :regexp t :custom sj-shackle-find-or-split))
   )
+
+(defmacro sj-call-with-prefix (fn)
+  `(lambda ()
+     (interactive)
+     (let ((current-prefix-arg '(4)))
+       (call-interactively ,fn))))
+
+(defun sj-display-buffer-split (buffer _alist)
+  (sj-split-and-select-other buffer))
+
+(defun sj-display-or-split-magit (buffer)
+  (display-buffer
+   buffer (if (with-current-buffer buffer
+                (derived-mode-p 'magit-diff-mode 'magit-process-mode))
+              '(sj-display-buffer-split)
+            '(display-buffer-same-window))))
 
 (use-package delight
   :ensure t)
@@ -201,6 +228,7 @@
   (sj-leader-def "x i" #'helm-imenu)
   (sj-leader-def "x TAB" #'helm-resume)
   (sj-leader-def "x o" #'helm-occur)
+  (sj-leader-def "x g" #'helm-do-grep-ag)
   (helm-map "TAB" #'helm-execute-persistent-action)
   (helm-map "C-/" #'helm-select-action)
   (helm-map "<escape>" #'helm-keyboard-quit)
@@ -299,10 +327,11 @@
   :pin melpa
   :after (helm projectile general)
   :general
-  (sj-leader-def "SPC" #'helm-projectile-find-file)
+  (sj-leader-def "SPC" #'helm-projectile)
   (sj-leader-def "p g" #'sj-projectile-grep-ag)
   (sj-leader-def "p G" #'sj-projectile-grep-ag-file-type)
   (sj-leader-def "p p" #'helm-projectile-switch-project)
+  (sj-leader-def "p r" #'helm-projectile-switch-project)
   (sj-leader-def "p f" #'helm-projectile-find-file)
   (sj-leader-def "p b" #'helm-projectile-switch-to-buffer)
   (sj-leader-def "p d" #'helm-projectile-find-dir)
@@ -311,6 +340,8 @@
   (setq projectile-enable-caching t)
   (setq helm-projectile-truncate-lines t)
   (setq projectile-switch-project-action #'projectile-dired)
+  (setq helm-projectile-sources-list
+	'(helm-source-projectile-recentf-list helm-source-projectile-files-list))
   )
 
 (use-package aggressive-indent
@@ -359,13 +390,6 @@
 (use-package nix-mode
   :ensure t
   :after (company))
-
-(use-package magit
-  :ensure t
-  :bind (("C-x g" . #'magit-status)
-         ("C-x M-g" . #'magit-dispatch-popup)
-         ("C-c M-g" . #'magit-file-popup)
-	 ("C-c b" . #'magit-blame)))
 
 (use-package markdown-mode
   :ensure t
@@ -435,7 +459,7 @@
   (sj-leader-def :keymaps 'intero-mode-map "m r" #'intero-apply-suggestions)
   :config
   (add-hook 'haskell-mode-hook #'intero-mode)
-  (sj-define-repl "\\*intero.*?repl\\*")
+  (sj-define-repl-regexp "\\*intero.*?repl\\*")
   )
 
 (use-package shackle
@@ -445,7 +469,8 @@
   (setq swiper-helm-display-function #'pop-to-buffer)
   :config
   (add-to-list 'shackle-rules '("*Help*" :custom sj-shackle-find-or-split))
-  (add-to-list 'shackle-rules '("*shell*" :regexp t :custom sj-shackle-find-or-split))
+  (add-to-list 'shackle-rules '("*Warnings*" :custom sj-shackle-find-or-split))
+  (sj-define-repl "*shell*")
   (shackle-mode 1))
 
 (use-package evil
@@ -507,9 +532,31 @@
   :config
   (evil-collection-init))
 
+(use-package forge
+  :ensure t
+  )
+
+(use-package magit
+  :ensure t
+  :general
+  (sj-leader-def "g b" #'magit-blame)
+  (sj-leader-def "g g" #'magit-status)
+  (sj-leader-def "g G" (sj-call-with-prefix #'magit-status))
+  (sj-leader-def "g d" #'magit-diff-buffer-file)
+  :init
+  (setq magit-display-buffer-function #'sj-display-or-split-magit)
+  (setq magit-bury-buffer-function #'magit-mode-quit-window)
+  )
+
+
 (use-package evil-magit
   :ensure t
-  :after (magit)
+  :demand t
+  :after magit forge general
+  :general
+  (magit-mode-map "q" #'ignore)
+  (magit-blame-mode-map "q" #'ignore)
+  (general-nmap 'magit-blame-mode-map "<escape>" #'magit-blame-quit)
   )
 
 (use-package evil-snipe
@@ -623,7 +670,7 @@
     ("6b2636879127bf6124ce541b1b2824800afc49c6ccd65439d6eb987dbf200c36" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" "fa2b58bb98b62c3b8cf3b6f02f058ef7827a8e497125de0254f56e373abee088" default)))
  '(package-selected-packages
    (quote
-    (treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
+    (forge treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

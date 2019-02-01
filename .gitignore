@@ -13,3 +13,4 @@ eshell/
 /recentf
 smex-items
 .cache/
+forge-database.sqlite
