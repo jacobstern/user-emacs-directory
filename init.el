@@ -121,19 +121,23 @@
   (interactive)
   (sj-projectile-grep-ag t))
 
-(defun sj-split-and-select-other (buffer)
-  (let ((new-window (split-window (selected-window) nil 'below)))
+(defun sj-split-preserving-context (buffer)
+  (let ((new-window (split-window (selected-window) nil 'above)))
     (select-window new-window)
     (evil-buffer buffer)
-    new-window))
+    new-window)
+  )
 
 (defun sj-shackle-split (buffer _alist _plist)
-  (sj-split-and-select-other buffer)
+  (sj-split-preserving-context buffer)
   )
 
 (defun sj-shackle-find-or-split (buffer alist plist)
   (or (get-buffer-window buffer)
-      (sj-shackle-split buffer alist plist))
+      (progn
+        (select-window (display-buffer-below-selected buffer alist))
+        (balance-windows)
+        buffer))
   )
 
 (defun sj-evil-prefix-translations (_mode mode-keymaps &rest _rest)
@@ -160,23 +164,22 @@
        (call-interactively ,fn))))
 
 (defun sj-display-buffer-split (buffer _alist)
-  (sj-split-and-select-other buffer))
-
-;; (defun sj-display-or-split-magit (buffer)
-;;   (display-buffer
-;;    buffer (cond (magit-display-buffer-noselect nil) ; Other window
-;;                 ((derived-mode-p 'magit-status-mode) '(display-buffer-below-selected))
-;;                 ((with-current-buffer buffer
-;;                    (derived-mode-p 'magit-diff-mode 'magit-process-mode))
-;;                  '(sj-display-buffer-split))
-;;                 (t '(display-buffer-same-window)))))
+  (sj-split-preserving-context buffer))
 
 (defun sj-display-or-split-magit (buffer)
-  (display-buffer
-   buffer (if (with-current-buffer buffer
-                (derived-mode-p 'magit-diff-mode 'magit-process-mode))
-              '(display-buffer-below-selected)
-            '(display-buffer-same-window))))
+  (let ((window (display-buffer
+                 buffer (if (with-current-buffer buffer
+                              (derived-mode-p 'magit-diff-mode 'magit-process-mode))
+                            '(display-buffer-below-selected)
+                          '(display-buffer-same-window)))))
+    (balance-windows)
+    window))
+
+(defun sj-run-shell ()
+  (interactive)
+  (if (projectile-project-root)
+      (projectile-run-shell)
+    (shell)))
 
 (use-package delight
   :ensure t)
@@ -189,7 +192,7 @@
     :keymaps 'override
     :prefix-command 'sj-leader-prefix
     :states '(normal visual))
-  (sj-leader-def "z" #'shell)
+  (sj-leader-def "z" #'sj-run-shell)
   )
 
 (use-package org)
@@ -457,6 +460,8 @@
 
 (use-package haskell-mode
   :ensure t
+  :config
+  (add-hook 'haskell-mode-hook (lambda () (setq evil-auto-indent nil)))
   )
 
 (use-package intero
@@ -481,8 +486,17 @@
   :config
   (add-to-list 'shackle-rules '("*Help*" :custom sj-shackle-find-or-split))
   (add-to-list 'shackle-rules '("*Warnings*" :custom sj-shackle-find-or-split))
-  (sj-define-repl "*shell*")
+  (sj-define-repl-regexp "\*shell.*?\\*")
   (shackle-mode 1))
+
+(defun sj-rebalance-after-quit (_old-function &rest arguments)
+  (let ((p (window-parent)))
+    (when evil-auto-balance-windows
+      ;; balance-windows raises an error if the parent does not have
+      ;; any further children (then rebalancing is not necessary anyway)
+      (condition-case nil
+          (balance-windows p)
+        (error)))))
 
 (use-package evil
   :ensure t
@@ -509,6 +523,8 @@
   (evil-mode 1)
   (add-hook 'prog-mode-hook #'sj-fix-underscore-word-syntax)
   (add-hook 'emacs-lisp-mode-hook #'sj-fix-elisp-word-syntax)
+
+  (advice-add #'evil-quit :after #'sj-rebalance-after-quit)
 
   (general-evil-setup)
   (general-nmap "C-n" #'ignore)
