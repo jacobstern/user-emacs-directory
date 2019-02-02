@@ -14,3 +14,4 @@ eshell/
 smex-items
 .cache/
 forge-database.sqlite
+url/

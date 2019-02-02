@@ -142,6 +142,7 @@
 
 (defun sj-evil-prefix-translations (_mode mode-keymaps &rest _rest)
   (evil-collection-translate-key 'normal mode-keymaps
+    (kbd "C-r") "g r"
     "q" nil)
   )
 
@@ -180,6 +181,15 @@
   (if (projectile-project-root)
       (projectile-run-shell)
     (shell)))
+
+(defun sj-rebalance-after-quit (_old-function &rest arguments)
+  (let ((p (window-parent)))
+    (when evil-auto-balance-windows
+      ;; balance-windows raises an error if the parent does not have
+      ;; any further children (then rebalancing is not necessary anyway)
+      (condition-case nil
+          (balance-windows p)
+        (error)))))
 
 (use-package delight
   :ensure t)
@@ -190,10 +200,14 @@
   (general-create-definer sj-leader-def
     :prefix "SPC"
     :keymaps 'override
+    :prefix-map 'sj-leader-map
     :prefix-command 'sj-leader-prefix
     :states '(normal visual))
   (sj-leader-def "z" #'sj-run-shell)
+  (sj-leader-def "e e" #'eval-expression)
   )
+
+
 
 (use-package org)
 
@@ -331,6 +345,9 @@
 
 (use-package projectile
   :ensure t
+  :demand t
+  :general
+  (sj-leader-def "j TAB" #'projectile-dired)
   :init
   (setq projectile-enable-caching t)
   :config
@@ -342,13 +359,14 @@
   :after (helm projectile general)
   :general
   (sj-leader-def "SPC" #'helm-projectile)
-  (sj-leader-def "p g" #'sj-projectile-grep-ag)
-  (sj-leader-def "p G" #'sj-projectile-grep-ag-file-type)
-  (sj-leader-def "p p" #'helm-projectile-switch-project)
-  (sj-leader-def "p r" #'helm-projectile-switch-project)
-  (sj-leader-def "p f" #'helm-projectile-find-file)
-  (sj-leader-def "p b" #'helm-projectile-switch-to-buffer)
-  (sj-leader-def "p d" #'helm-projectile-find-dir)
+  (sj-leader-def "j g" #'sj-projectile-grep-ag)
+  (sj-leader-def "j G" #'sj-projectile-grep-ag-file-type)
+  (sj-leader-def "j j" #'helm-projectile)
+  (sj-leader-def "j s" #'helm-projectile-switch-project)
+  (sj-leader-def "j r" #'helm-projectile-recentf)
+  (sj-leader-def "j f" #'helm-projectile-find-file)
+  (sj-leader-def "j b" #'helm-projectile-switch-to-buffer)
+  (sj-leader-def "j d" #'helm-projectile-find-dir)
   (helm-projectile-find-file-map "C-r" #'sj-refresh-projectile-list)
   :init
   (setq projectile-enable-caching t)
@@ -356,6 +374,12 @@
   (setq projectile-switch-project-action #'projectile-dired)
   (setq helm-projectile-sources-list
 	'(helm-source-projectile-recentf-list helm-source-projectile-files-list))
+  )
+
+(use-package recentf
+  :config
+  (add-to-list 'recentf-exclude ".*/elpa/.*")
+  (add-to-list 'recentf-exclude ".*/\.stack-work/.*")
   )
 
 (use-package aggressive-indent
@@ -412,7 +436,7 @@
   (setq avy-all-windows nil)
   :general
   (sj-leader-def "s" #'avy-goto-char-2)
-  (sj-leader-def "j" #'avy-goto-line)
+  (sj-leader-def "l" #'avy-goto-line)
   )
 
 (use-package nix-mode
@@ -504,15 +528,6 @@
   (sj-define-repl-regexp "\*shell.*?\\*")
   (shackle-mode 1))
 
-(defun sj-rebalance-after-quit (_old-function &rest arguments)
-  (let ((p (window-parent)))
-    (when evil-auto-balance-windows
-      ;; balance-windows raises an error if the parent does not have
-      ;; any further children (then rebalancing is not necessary anyway)
-      (condition-case nil
-          (balance-windows p)
-        (error)))))
-
 (use-package evil
   :ensure t
   :demand t
@@ -572,7 +587,8 @@
   (setq evil-collection-company-use-tng nil)
   (add-hook 'evil-collection-setup-hook #'sj-evil-prefix-translations)
   :config
-  (evil-collection-init))
+  (evil-collection-init)
+  )
 
 (use-package forge
   :ensure t
@@ -599,6 +615,7 @@
   (magit-mode-map "q" #'ignore)
   (magit-blame-mode-map "q" #'ignore)
   (general-nmap 'magit-blame-mode-map "<escape>" #'magit-blame-quit)
+  (general-nmap 'magit-mode-map "C-r" #'magit-refresh)
   )
 
 (use-package evil-snipe
@@ -704,8 +721,6 @@
 (use-package yasnippet
   :ensure t
   :demand t
-  :general
-  (general-imap "C-s" #'yas-expand)
   :config
   (yas-global-mode 1)
   (add-hook 'evil-insert-state-exit-hook #'yas-exit-all-snippets)
