@@ -50,8 +50,6 @@
 (toggle-scroll-bar -1)
 (menu-bar-mode -1)
 
-(set-face-attribute 'default nil :height 130)
-
 (add-hook 'prog-mode-hook #'display-line-numbers-mode)
 (add-hook 'text-mode-hook #'display-line-numbers-mode)
 
@@ -69,7 +67,36 @@
 
 (define-key global-map (kbd "C-s") #'isearch-forward-regexp)
 (define-key global-map (kbd "C-r") #'isearch-backward-regexp)
+
 
+(defvar sj-regular-font-size 130
+  "Regular font size for programming."
+  )
+
+(set-face-attribute 'default nil :height sj-regular-font-size)
+
+(defvar sj-larger-font-size 180
+  "Larger font size for sharing screen etc."
+  )
+
+(defun sj-set-font-height (height)
+  (interactive "nEnter font size in .1 pixel units: ")
+  "Set the font size in .1 pixel units."
+  (set-face-attribute 'default nil :height height)
+  )
+
+(define-minor-mode sj-larger-text-mode
+  "Toggle a mode where text is larger than usual."
+  :global t
+  (if sj-larger-text-mode
+      (progn
+        (sj-set-font-height sj-larger-font-size)
+        )
+    (progn
+      (sj-set-font-height sj-regular-font-size)
+      )
+    ))
+
 (defun sj-inhibit-electric-pair-mode (_char)
   (minibufferp))
 
@@ -272,7 +299,7 @@
   (setq helm-mode-handle-completion-in-region nil)
   (setq helm-display-function #'pop-to-buffer) ; For Shackle compatibility
   :config
-  (add-to-list 'shackle-rules '("\\`\\*helm.*?\\*\\'" :regexp t :align t :size 28))
+  (add-to-list 'shackle-rules '("\\`\\*helm.*?\\*\\'" :regexp t :align t :size 20))
   )
 
 (use-package helm-config
@@ -401,17 +428,13 @@
 
 (use-package company
   :ensure t
-  :after (general)
+  :demand t
+  :after (general evil)
   :init
-  (setq company-selection-wrap-around t)
   (setq company-tooltip-align-annotations t)
   (setq company-dabbrev-downcase nil)
   (setq company-require-match nil)
   (setq company-abort-manual-when-too-short t)
-  :general
-  (general-imap "C-SPC" #'company-complete-common)
-  (general-imap "C-/" #'company-yasnippet)
-  (company-active-map "C-c" #'company-abort)
   :config
   (global-company-mode 1)
   (add-hook 'prog-mode-hook #'add-yas-to-completion)
@@ -498,8 +521,21 @@
 
 (use-package haskell-mode
   :ensure t
+  :init
+  (setq haskell-compile-ignore-cabal t)
+  (setq haskell-compile-cabal-build-command "cabal new-build --ghc-option=-ferror-spans")
+  (setq haskell-compile-cabal-build-alt-command "cabal clean -s && cabal new-build --ghc-option=-ferror-spans")
   :config
   (add-hook 'haskell-mode-hook (lambda () (setq evil-auto-indent nil)))
+  (sj-define-repl-regexp "\\*haskell-compilation\\*.*")
+  (sj-leader-def :keymaps 'haskell-mode-map "m c" #'haskell-compile)
+  )
+
+(use-package hindent
+  :ensure t
+  :config
+  (add-hook 'haskell-mode-hook #'hindent-mode)
+  (sj-leader-def :keymaps 'haskell-mode-map "m f" #'hindent-reformat-buffer)
   )
 
 (use-package intero
@@ -524,6 +560,7 @@
   (setq swiper-helm-display-function #'pop-to-buffer)
   :config
   (add-to-list 'shackle-rules '("*Help*" :custom sj-shackle-find-or-split))
+  (add-to-list 'shackle-rules '("*Backtrace" :custom sj-shackle-find-or-split))
   (add-to-list 'shackle-rules '("*Warnings*" :custom sj-shackle-find-or-split))
   (sj-define-repl-regexp "\*shell.*?\\*")
   (shackle-mode 1))
@@ -579,15 +616,25 @@
   (define-key evil-inner-text-objects-map "d" #'evil-inner-defun)
   )
 
+(use-package evil-visual-mark-mode
+  :ensure t
+  :commands evil-visual-mark-mode
+  )
+
 (use-package evil-collection
   :ensure t
-  :after evil
+  :demand t
+  :after (evil company helm)
   :init
   (setq evil-collection-term-sync-state-and-mode-p nil)
   (setq evil-collection-company-use-tng nil)
   (add-hook 'evil-collection-setup-hook #'sj-evil-prefix-translations)
   :config
   (evil-collection-init)
+  (general-def company-active-map "C-j" nil)
+  (general-def company-active-map "C-k" nil)
+  (general-def company-active-map "C-c" #'company-abort)
+  (general-imap "C-SPC" #'company-complete-common)
   )
 
 (use-package forge
@@ -615,7 +662,6 @@
   (magit-mode-map "q" #'ignore)
   (magit-blame-mode-map "q" #'ignore)
   (general-nmap 'magit-blame-mode-map "<escape>" #'magit-blame-quit)
-  (general-nmap 'magit-mode-map "C-r" #'magit-refresh)
   )
 
 (use-package evil-snipe
@@ -741,7 +787,7 @@
     ("6b2636879127bf6124ce541b1b2824800afc49c6ccd65439d6eb987dbf200c36" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" "fa2b58bb98b62c3b8cf3b6f02f058ef7827a8e497125de0254f56e373abee088" default)))
  '(package-selected-packages
    (quote
-    (yasnippet-snippets yasnippet forge treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
+    (evil-visual-mark-mode yasnippet-snippets yasnippet forge treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
