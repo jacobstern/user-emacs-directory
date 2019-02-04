@@ -225,6 +225,11 @@ directory."
   (if (vc-git-responsible-p default-directory)
       (magit-status)
     (projectile-dired)))
+
+(defun sj-refresh-projectile-list ()
+  (interactive)
+  (projectile-invalidate-cache nil)
+  (helm-refresh))
 
 (use-package delight
   :ensure t)
@@ -397,11 +402,16 @@ directory."
   (sj-leader-def "j g" #'sj-projectile-grep-ag)
   (sj-leader-def "j G" #'sj-projectile-grep-ag-file-type)
   (sj-leader-def "j j" #'helm-projectile)
+  (sj-leader-def "j J" (sj-call-with-prefix #'helm-projectile))
   (sj-leader-def "j s" #'helm-projectile-switch-project)
   (sj-leader-def "j r" #'helm-projectile-recentf)
   (sj-leader-def "j f" #'helm-projectile-find-file)
+  (sj-leader-def "j F" (sj-call-with-prefix #'helm-projectile-find-file))
   (sj-leader-def "j b" #'helm-projectile-switch-to-buffer)
+  (sj-leader-def "j B" (sj-call-with-prefix #'helm-projectile-switch-to-buffer))
   (sj-leader-def "j d" #'helm-projectile-find-dir)
+  (sj-leader-def "j D" (sj-call-with-prefix #'helm-projectile-find-dir))
+  (sj-leader-def "j c" #'projectile-invalidate-cache)
   (helm-projectile-find-file-map "C-r" #'sj-refresh-projectile-list)
   :init
   (setq projectile-enable-caching t)
