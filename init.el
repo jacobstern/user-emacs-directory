@@ -217,6 +217,14 @@
       (condition-case nil
           (balance-windows p)
         (error)))))
+
+(defun sj-projectile-dired-or-magit ()
+  "Open Magit for a project using Git, otherwise open the root
+directory."
+  (interactive)
+  (if (vc-git-responsible-p default-directory)
+      (magit-status)
+    (projectile-dired)))
 
 (use-package delight
   :ensure t)
@@ -398,7 +406,7 @@
   :init
   (setq projectile-enable-caching t)
   (setq helm-projectile-truncate-lines t)
-  (setq projectile-switch-project-action #'projectile-dired)
+  (setq projectile-switch-project-action #'sj-projectile-dired-or-magit)
   (setq helm-projectile-sources-list
 	'(helm-source-projectile-recentf-list helm-source-projectile-files-list))
   )
