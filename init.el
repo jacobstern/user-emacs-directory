@@ -295,7 +295,6 @@ directory."
   (sj-leader-def "x r" #'helm-recentf)
   (sj-leader-def "x i" #'helm-imenu)
   (sj-leader-def "x TAB" #'helm-resume)
-  (sj-leader-def "x o" #'helm-occur)
   (sj-leader-def "x g" #'helm-do-grep-ag)
   (helm-map "TAB" #'helm-execute-persistent-action)
   (helm-map "C-/" #'helm-select-action)
@@ -402,6 +401,7 @@ directory."
   :after (helm projectile general)
   :general
   (sj-leader-def "SPC" #'helm-projectile)
+  (general-nmap "C-P" #'helm-projectile)
   (sj-leader-def "j g" #'sj-projectile-grep-ag)
   (sj-leader-def "j G" #'sj-projectile-grep-ag-file-type)
   (sj-leader-def "j j" #'helm-projectile)
@@ -422,6 +422,17 @@ directory."
   (setq projectile-switch-project-action #'sj-projectile-dired-or-magit)
   (setq helm-projectile-sources-list
 	'(helm-source-projectile-recentf-list helm-source-projectile-files-list))
+  )
+
+(use-package swiper-helm
+  :ensure t
+  :after general helm shackle
+  :general
+  (general-nmap "C-/" #'swiper-helm)
+  :init
+  (setq swiper-helm-display-function #'pop-to-buffer)
+  :config
+  (add-to-list 'shackle-rules '("*swiper*" :align t :size 20))
   )
 
 (use-package recentf
@@ -577,8 +588,6 @@ directory."
 (use-package shackle
   :ensure t
   :pin melpa
-  :init
-  (setq swiper-helm-display-function #'pop-to-buffer)
   :config
   (add-to-list 'shackle-rules '("*Help*" :custom sj-shackle-find-or-split))
   (add-to-list 'shackle-rules '("*Backtrace" :custom sj-shackle-find-or-split))
@@ -824,7 +833,7 @@ directory."
     ("6b2636879127bf6124ce541b1b2824800afc49c6ccd65439d6eb987dbf200c36" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" "fa2b58bb98b62c3b8cf3b6f02f058ef7827a8e497125de0254f56e373abee088" default)))
  '(package-selected-packages
    (quote
-    (alchemist web-mode elixir-mode evil-visual-mark-mode yasnippet-snippets yasnippet forge treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
+    (swiper-helm helm-swiper alchemist web-mode elixir-mode evil-visual-mark-mode yasnippet-snippets yasnippet forge treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
