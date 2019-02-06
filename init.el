@@ -793,6 +793,22 @@ directory."
 (use-package yasnippet-snippets
   :ensure t
   )
+
+(use-package elixir-mode
+  :ensure t
+  )
+
+(use-package web-mode
+  :ensure t
+  )
+
+(use-package alchemist
+  :ensure t
+  :config
+  (sj-define-repl "*Alchemist-IEx*")
+  (sj-leader-def :keymaps 'alchemist-mode-map "a" #'alchemist-mode-keymap)
+  (sj-leader-def :keymaps 'alchemist-iex-mode-map "a i c" #'alchemist-iex-clear-buffer)
+  )
 
 
 (custom-set-variables
@@ -805,7 +821,7 @@ directory."
     ("6b2636879127bf6124ce541b1b2824800afc49c6ccd65439d6eb987dbf200c36" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" "fa2b58bb98b62c3b8cf3b6f02f058ef7827a8e497125de0254f56e373abee088" default)))
  '(package-selected-packages
    (quote
-    (evil-visual-mark-mode yasnippet-snippets yasnippet forge treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
+    (alchemist web-mode elixir-mode evil-visual-mark-mode yasnippet-snippets yasnippet forge treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
