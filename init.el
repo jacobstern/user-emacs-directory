@@ -390,8 +390,11 @@ directory."
   (sj-leader-def "j TAB" #'projectile-dired)
   :init
   (setq projectile-enable-caching t)
+  (setq projectile-git-command "fd . -0") ; Requires https://github.com/sharkdp/fd
+  (setq projectile-generic-command "fd . -0")
   :config
-  (projectile-mode 1))
+  (projectile-mode 1)
+  )
 
 (use-package helm-projectile
   :ensure t
@@ -737,7 +740,7 @@ directory."
           treemacs-goto-tag-strategy          'refetch-index
           treemacs-indentation                2
           treemacs-indentation-string         " "
-          treemacs-is-never-other-window      nil
+          treemacs-is-never-other-window      t ; Default nil
           treemacs-max-git-entries            5000
           treemacs-no-png-images              nil
           treemacs-no-delete-other-windows    t
