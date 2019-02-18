@@ -68,6 +68,8 @@
 (define-key global-map (kbd "C-s") #'isearch-forward-regexp)
 (define-key global-map (kbd "C-r") #'isearch-backward-regexp)
 
+
+(setq window-sides-vertical t)
 
 (defvar sj-regular-font-size 130
   "Regular font size for programming."
@@ -287,8 +289,9 @@ directory."
 (use-package helm
   :ensure t
   :delight
-  :after (general delight shackle)
+  :after general delight shackle
   :general
+  (general-iemap "M-x" #'helm-M-x)
   (sj-leader-def "x x" #'helm-M-x)
   (sj-leader-def "x b" #'helm-buffers-list)
   (sj-leader-def "x f" #'helm-find-files)
@@ -398,10 +401,10 @@ directory."
 (use-package helm-projectile
   :ensure t
   :pin melpa
-  :after (helm projectile general)
+  :after helm projectile general evil
   :general
+  (general-nmap "C-p" #'helm-projectile)
   (sj-leader-def "SPC" #'helm-projectile)
-  (general-nmap "C-P" #'helm-projectile)
   (sj-leader-def "j g" #'sj-projectile-grep-ag)
   (sj-leader-def "j G" #'sj-projectile-grep-ag-file-type)
   (sj-leader-def "j j" #'helm-projectile)
@@ -422,17 +425,6 @@ directory."
   (setq projectile-switch-project-action #'sj-projectile-dired-or-magit)
   (setq helm-projectile-sources-list
 	'(helm-source-projectile-recentf-list helm-source-projectile-files-list))
-  )
-
-(use-package swiper-helm
-  :ensure t
-  :after general helm shackle
-  :general
-  (general-nmap "C-/" #'swiper-helm)
-  :init
-  (setq swiper-helm-display-function #'pop-to-buffer)
-  :config
-  (add-to-list 'shackle-rules '("*swiper*" :align t :size 20))
   )
 
 (use-package recentf
@@ -551,40 +543,6 @@ directory."
   ;; https://github.com/magit/magit/issues/1878
   (advice-add 'magit-process-filter :after #'sj-colorize-buffer))
 
-(use-package haskell-mode
-  :ensure t
-  :init
-  (setq haskell-compile-ignore-cabal t)
-  (setq haskell-compile-cabal-build-command "cabal new-build --ghc-option=-ferror-spans")
-  (setq haskell-compile-cabal-build-alt-command "cabal clean -s && cabal new-build --ghc-option=-ferror-spans")
-  :config
-  (add-hook 'haskell-mode-hook (lambda () (setq evil-auto-indent nil)))
-  (sj-define-repl-regexp "\\*haskell-compilation\\*.*")
-  (sj-leader-def :keymaps 'haskell-mode-map "m c" #'haskell-compile)
-  )
-
-(use-package hindent
-  :ensure t
-  :config
-  (add-hook 'haskell-mode-hook #'hindent-mode)
-  (sj-leader-def :keymaps 'haskell-mode-map "m f" #'hindent-reformat-buffer)
-  )
-
-(use-package intero
-  :ensure t
-  :demand t
-  :after (general haskell-mode shackle)
-  :general
-  (sj-leader-def :keymaps 'intero-mode-map "m l" #'intero-repl-load)
-  (sj-leader-def :keymaps 'intero-mode-map "m z" #'intero-repl)
-  (sj-leader-def :keymaps 'intero-mode-map "m t" #'intero-type-at)
-  (sj-leader-def :keymaps 'intero-mode-map "m r" #'intero-apply-suggestions)
-  :config
-  (add-hook 'haskell-mode-hook #'intero-mode)
-  (add-hook 'intero-mode-hook #'add-yas-to-completion)
-  (sj-define-repl-regexp "\\*intero.*?repl\\*")
-  )
-
 (use-package shackle
   :ensure t
   :pin melpa
@@ -625,7 +583,6 @@ directory."
 
   (general-evil-setup)
   (general-nmap "C-n" #'ignore)
-  (general-nmap "C-p" #'ignore)
 
   (evil-define-text-object evil-defun (count &optional beg end type)
     "Select around defun."
@@ -665,6 +622,16 @@ directory."
   (general-def company-active-map "C-k" nil)
   (general-def company-active-map "C-c" #'company-abort)
   (general-imap "C-SPC" #'company-complete-common)
+  )
+
+(use-package swiper-helm
+  :ensure t
+  :after (general helm shackle evil)
+  :init
+  (setq swiper-helm-display-function #'pop-to-buffer)
+  :config
+  (add-to-list 'shackle-rules '("*swiper*" :align t :size 20))
+  (general-nmap "C-/" #'swiper-helm)
   )
 
 (use-package forge
@@ -779,9 +746,9 @@ directory."
   (add-hook 'treemacs-mode-hook
 	    (lambda ()
 	      (setq cursor-in-non-selected-windows nil)))
-  (if (equal (treemacs-current-visibility) 'none)
-      (save-selected-window
-        (treemacs)))
+  ;; (if (equal (treemacs-current-visibility) 'none)
+  ;;     (save-selected-window
+  ;;       (treemacs)))
   )
 
 (use-package treemacs-evil
@@ -820,6 +787,40 @@ directory."
   (sj-define-repl "*Alchemist-IEx*")
   (sj-leader-def :keymaps 'alchemist-mode-map "a" #'alchemist-mode-keymap)
   (sj-leader-def :keymaps 'alchemist-iex-mode-map "a i c" #'alchemist-iex-clear-buffer)
+
+  (use-package haskell-mode
+    :ensure t
+    :init
+    (setq haskell-compile-ignore-cabal t)
+    (setq haskell-compile-cabal-build-command "cabal new-build --ghc-option=-ferror-spans")
+    (setq haskell-compile-cabal-build-alt-command "cabal clean -s && cabal new-build --ghc-option=-ferror-spans")
+    :config
+    (add-hook 'haskell-mode-hook (lambda () (setq evil-auto-indent nil)))
+    (sj-define-repl-regexp "\\*haskell-compilation\\*.*")
+    (sj-leader-def :keymaps 'haskell-mode-map "m c" #'haskell-compile)
+    )
+
+(use-package hindent
+  :ensure t
+  :config
+  (add-hook 'haskell-mode-hook #'hindent-mode)
+  (sj-leader-def :keymaps 'haskell-mode-map "m f" #'hindent-reformat-buffer)
+  )
+
+(use-package intero
+  :ensure t
+  :demand t
+  :after (general haskell-mode shackle evil)
+  :general
+  (sj-leader-def :keymaps 'intero-mode-map "m l" #'intero-repl-load)
+  (sj-leader-def :keymaps 'intero-mode-map "m z" #'intero-repl)
+  (sj-leader-def :keymaps 'intero-mode-map "m t" #'intero-type-at)
+  (sj-leader-def :keymaps 'intero-mode-map "m r" #'intero-apply-suggestions)
+  :config
+  (add-hook 'haskell-mode-hook #'intero-mode)
+  (add-hook 'intero-mode-hook #'add-yas-to-completion)
+  (sj-define-repl-regexp "\\*intero.*?repl\\*")
+  (general-nmap :keymaps 'intero-mode-map "gz" #'intero-repl)
   )
 
 
@@ -833,7 +834,7 @@ directory."
     ("6b2636879127bf6124ce541b1b2824800afc49c6ccd65439d6eb987dbf200c36" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" "fa2b58bb98b62c3b8cf3b6f02f058ef7827a8e497125de0254f56e373abee088" default)))
  '(package-selected-packages
    (quote
-    (swiper-helm helm-swiper alchemist web-mode elixir-mode evil-visual-mark-mode yasnippet-snippets yasnippet forge treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
+    (swiper-helm web-mode alchemist elixir-mode evil-visual-mark-mode yasnippet-snippets yasnippet forge treemacs-projectile treemacs-evil treemacs hindent evil-matchit evil-indent-plus evil-surround evil-commentary evil-snipe evil-magit general evil-collection helm-projectile shackle doom-themes git-gutter intero haskell-mode direnv dhall-mode yaml-mode ivy-hydra hydra smex counsel-projectile counsel ivy anzu goto-last-change which-key markdown-mode exec-path-from-shell magit nix-mode solarized-theme aggressive-indent projectile delight restart-emacs winum avy undo-tree flycheck company spaceline powerline whole-line-or-region use-package))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
